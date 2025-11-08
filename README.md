@@ -1,6 +1,8 @@
 # Code Switch
 
-AI Relay 管理工具，集中管理 Claude & Codex 供应商、热力墙与请求日志。基于 [Wails 3](https://v3.wails.io)。
+集中管理 Claude Code & Codex 供应商
+
+接管 Claude Code 与 Codex 后，可并行使用多个 Provider 的服务；按优先级逐个调用（支持拖动排序），并通过热力图、按供应商用量统计与请求日志洞察详细数据。基于 [Wails 3](https://v3.wails.io)。
 
 ## 预览
 ![亮色主界面](resources/images/code-switch.png)
