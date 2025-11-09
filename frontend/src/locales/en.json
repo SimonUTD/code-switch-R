@@ -71,7 +71,7 @@
         },
         "placeholders": {
           "name": "e.g. AICoding.sh",
-          "apiUrl": "https://api.aicoding.sh/v1",
+          "apiUrl": "https://api.aicoding.sh",
           "apiKey": "sk-xxxxx",
           "officialSite": "https://vendor.com",
           "icon": "e.g. aicoding, kimi"

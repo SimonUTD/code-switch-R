@@ -15,7 +15,7 @@ export const automationCardGroups: Record<'claude' | 'codex', AutomationCard[]> 
     {
       id: 101,
       name: 'AICoding.sh',
-      apiUrl: 'https://api.aicoding.sh/v1',
+      apiUrl: 'https://api.aicoding.sh',
       apiKey: '',
       officialSite: 'https://aicoding.sh',
       icon: 'aicoding',
@@ -50,7 +50,7 @@ export const automationCardGroups: Record<'claude' | 'codex', AutomationCard[]> 
     {
       id: 201,
       name: 'AICoding.sh',
-      apiUrl: 'https://api.aicoding.sh/v1',
+      apiUrl: 'https://api.aicoding.sh',
       apiKey: '',
       officialSite: 'https://www.aicoding.sh',
       icon: 'aicoding',
