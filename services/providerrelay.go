@@ -359,12 +359,13 @@ func (prs *ProviderRelayService) forwardRequest(
 		return false, fmt.Errorf("empty response")
 	}
 
+	// 先获取状态码，确保即使后续返回错误，也能记录正确的 HTTP 状态码
+	status := resp.StatusCode()
+	requestLog.HttpCode = status
+
 	if resp.Error() != nil {
 		return false, resp.Error()
 	}
-
-	status := resp.StatusCode()
-	requestLog.HttpCode = status
 
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
 		_, copyErr := resp.ToHttpResponseWriter(c.Writer, ReqeustLogHook(c, kind, requestLog))
