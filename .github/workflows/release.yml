@@ -182,9 +182,18 @@ jobs:
 
             ## 🔧 技术改进
             - 新增 UpdateService 后端服务（400+ 行）
-            - 版本号管理服务，当前版本 v0.2.5
+            - 版本号管理服务，当前版本 v0.2.6
             - 状态持久化到 ~/.code-switch/update-state.json
             - 依赖更新：github.com/hashicorp/go-version v1.7.0
+
+            ## 🐛 Bug 修复
+            - 修复"立即检查"按钮文字换行问题
+            - 修复 copyFile 函数重名冲突
+
+            ## ✨ UI 改进
+            - 新增主页刷新按钮（一键刷新所有数据）
+            - 添加刷新按钮旋转动画效果
+            - 完善按钮样式和禁用状态
 
             ## 📦 安装说明
 
@@ -192,7 +201,7 @@ jobs:
             - **macOS (Apple Silicon)**：下载 `codeswitch-macos-arm64.zip`，解压后拖入 Applications 文件夹
             - **macOS (Intel)**：下载 `codeswitch-macos-amd64.zip`，解压后拖入 Applications 文件夹
 
-            **完整更新日志**: https://github.com/Rogers-F/code-switch-R/compare/v0.2.4...v0.2.5
+            **完整更新日志**: https://github.com/Rogers-F/code-switch-R/compare/v0.2.4...v0.2.6
           draft: false
           prerelease: false
         env:
