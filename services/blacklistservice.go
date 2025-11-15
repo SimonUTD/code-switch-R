@@ -136,10 +136,11 @@ func (bs *BlacklistService) IsBlacklisted(platform string, providerName string) 
 
 	var blacklistedUntil sql.NullTime
 
+	// 移除 SQL 时间比较，改为 Go 代码判断（修复时区 bug）
 	err = db.QueryRow(`
 		SELECT blacklisted_until
 		FROM provider_blacklist
-		WHERE platform = ? AND provider_name = ? AND blacklisted_until > datetime('now')
+		WHERE platform = ? AND provider_name = ? AND blacklisted_until IS NOT NULL
 	`, platform, providerName).Scan(&blacklistedUntil)
 
 	if err == sql.ErrNoRows {
@@ -150,7 +151,10 @@ func (bs *BlacklistService) IsBlacklisted(platform string, providerName string) 
 	}
 
 	if blacklistedUntil.Valid {
-		return true, &blacklistedUntil.Time
+		// 使用 Go 代码比较时间（正确处理时区）
+		if blacklistedUntil.Time.After(time.Now()) {
+			return true, &blacklistedUntil.Time
+		}
 	}
 
 	return false, nil
@@ -192,12 +196,11 @@ func (bs *BlacklistService) AutoRecoverExpired() error {
 		return fmt.Errorf("获取数据库连接失败: %w", err)
 	}
 
-	// 查询需要恢复的 provider
+	// 查询需要恢复的 provider（移除 SQL 时间比较，改为 Go 代码判断）
 	rows, err := db.Query(`
-		SELECT platform, provider_name
+		SELECT platform, provider_name, blacklisted_until
 		FROM provider_blacklist
 		WHERE blacklisted_until IS NOT NULL
-			AND blacklisted_until <= datetime('now')
 			AND auto_recovered = 0
 	`)
 
@@ -206,12 +209,21 @@ func (bs *BlacklistService) AutoRecoverExpired() error {
 	}
 	defer rows.Close()
 
+	now := time.Now()
 	var recovered []string
+
 	for rows.Next() {
 		var platform, providerName string
-		if err := rows.Scan(&platform, &providerName); err != nil {
+		var blacklistedUntil sql.NullTime
+
+		if err := rows.Scan(&platform, &providerName, &blacklistedUntil); err != nil {
 			log.Printf("⚠️  读取恢复记录失败: %v", err)
 			continue
+		}
+
+		// 使用 Go 代码判断是否过期（正确处理时区）
+		if !blacklistedUntil.Valid || blacklistedUntil.Time.After(now) {
+			continue // 未过期，跳过
 		}
 
 		// 标记为已恢复（保留历史记录）
