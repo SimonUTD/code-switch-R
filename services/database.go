@@ -28,11 +28,31 @@ func ensureBlacklistTablesWithDB(db *sql.DB) error {
 		last_failure_at DATETIME,
 		auto_recovered BOOLEAN DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+		-- 等级拉黑新增字段（v0.4.0）
+		blacklist_level INTEGER DEFAULT 0,
+		last_recovered_at DATETIME,
+		last_degrade_hour INTEGER DEFAULT 0,
+		last_failure_window_start DATETIME,
+
 		UNIQUE(platform, provider_name)
 	)`
 
 	if _, err := db.Exec(createBlacklistTableSQL); err != nil {
 		return err
+	}
+
+	// 兼容升级：为旧表添加新字段（如果表已存在）
+	alterTableStatements := []string{
+		"ALTER TABLE provider_blacklist ADD COLUMN blacklist_level INTEGER DEFAULT 0",
+		"ALTER TABLE provider_blacklist ADD COLUMN last_recovered_at DATETIME",
+		"ALTER TABLE provider_blacklist ADD COLUMN last_degrade_hour INTEGER DEFAULT 0",
+		"ALTER TABLE provider_blacklist ADD COLUMN last_failure_window_start DATETIME",
+	}
+
+	for _, stmt := range alterTableStatements {
+		// 忽略错误（字段可能已存在）
+		db.Exec(stmt)
 	}
 
 	// 创建 app_settings 表

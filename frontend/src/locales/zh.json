@@ -156,7 +156,14 @@
         "seconds": "秒",
         "unblock": "立即解禁",
         "unblockSuccess": "已解除 {name} 的拉黑",
-        "unblockFailed": "解除拉黑失败，请稍后重试"
+        "unblockFailed": "解除拉黑失败，请稍后重试",
+        "unblockAndReset": "完全解除",
+        "resetLevel": "清零等级",
+        "unblockAndResetHint": "解除拉黑并重置等级，重新开始降级计时",
+        "resetLevelHint": "仅清零等级，保留拉黑状态",
+        "resetLevelSuccess": "已清零 {name} 的等级",
+        "resetLevelFailed": "清零等级失败，请稍后重试",
+        "levelHint": "有失败记录"
       }
     },
     "logs": {

@@ -155,7 +155,14 @@
         "seconds": "s",
         "unblock": "Unblock",
         "unblockSuccess": "{name} has been unblocked",
-        "unblockFailed": "Failed to unblock"
+        "unblockFailed": "Failed to unblock",
+        "unblockAndReset": "Full Unblock",
+        "resetLevel": "Reset Level",
+        "unblockAndResetHint": "Unblock and reset level, restart degradation timer",
+        "resetLevelHint": "Reset level only, keep blacklist status",
+        "resetLevelSuccess": "{name} level has been reset",
+        "resetLevelFailed": "Failed to reset level",
+        "levelHint": "Has failure record"
       }
     },
     "logs": {

@@ -356,18 +356,58 @@
                 v-if="getProviderBlacklistStatus(card.name)?.isBlacklisted"
                 :class="['blacklist-banner', { dark: resolvedTheme === 'dark' }]"
               >
-                <span class="blacklist-icon">⛔</span>
-                <span class="blacklist-text">
-                  {{ t('components.main.blacklist.blocked') }} |
-                  {{ t('components.main.blacklist.remaining') }}:
-                  {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
-                </span>
-                <button
-                  class="unblock-btn"
-                  type="button"
-                  @click.stop="handleUnblock(card.name)"
+                <div class="blacklist-info">
+                  <span class="blacklist-icon">⛔</span>
+                  <!-- 等级徽章（L1-L5，黑色/红色） -->
+                  <span
+                    v-if="getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
+                    :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
+                  >
+                    L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                  </span>
+                  <span class="blacklist-text">
+                    {{ t('components.main.blacklist.blocked') }} |
+                    {{ t('components.main.blacklist.remaining') }}:
+                    {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
+                  </span>
+                </div>
+                <div class="blacklist-actions">
+                  <button
+                    class="unblock-btn primary"
+                    type="button"
+                    @click.stop="handleUnblockAndReset(card.name)"
+                    :title="t('components.main.blacklist.unblockAndResetHint')"
+                  >
+                    {{ t('components.main.blacklist.unblockAndReset') }}
+                  </button>
+                  <button
+                    class="unblock-btn secondary"
+                    type="button"
+                    @click.stop="handleResetLevel(card.name)"
+                    :title="t('components.main.blacklist.resetLevelHint')"
+                  >
+                    {{ t('components.main.blacklist.resetLevel') }}
+                  </button>
+                </div>
+              </div>
+              <!-- 等级徽章（未拉黑但有等级） -->
+              <div
+                v-else-if="getProviderBlacklistStatus(card.name) && getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
+                class="level-badge-standalone"
+              >
+                <span
+                  :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
                 >
-                  {{ t('components.main.blacklist.unblock') }}
+                  L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                </span>
+                <span class="level-hint">{{ t('components.main.blacklist.levelHint') }}</span>
+                <button
+                  class="reset-level-mini"
+                  type="button"
+                  @click.stop="handleResetLevel(card.name)"
+                  :title="t('components.main.blacklist.resetLevelHint')"
+                >
+                  ✕
                 </button>
               </div>
             </div>
@@ -1047,10 +1087,10 @@ const loadBlacklistStatus = async (tab: ProviderTab) => {
   }
 }
 
-// 手动解禁
-const handleUnblock = async (providerName: string) => {
+// 手动解禁并重置（完全重置）
+const handleUnblockAndReset = async (providerName: string) => {
   try {
-    await manualUnblock(activeTab.value, providerName)
+    await Call.ByName('codeswitch/services.BlacklistService.ManualUnblockAndReset', activeTab.value, providerName)
     showToast(t('components.main.blacklist.unblockSuccess', { name: providerName }), 'success')
     await loadBlacklistStatus(activeTab.value)
   } catch (err) {
@@ -1058,6 +1098,21 @@ const handleUnblock = async (providerName: string) => {
     showToast(t('components.main.blacklist.unblockFailed'), 'error')
   }
 }
+
+// 手动清零等级（仅重置等级）
+const handleResetLevel = async (providerName: string) => {
+  try {
+    await Call.ByName('codeswitch/services.BlacklistService.ManualResetLevel', activeTab.value, providerName)
+    showToast(t('components.main.blacklist.resetLevelSuccess', { name: providerName }), 'success')
+    await loadBlacklistStatus(activeTab.value)
+  } catch (err) {
+    console.error('清零等级失败:', err)
+    showToast(t('components.main.blacklist.resetLevelFailed'), 'error')
+  }
+}
+
+// 手动解禁（向后兼容，调用 handleUnblockAndReset）
+const handleUnblock = handleUnblockAndReset
 
 // 格式化倒计时
 const formatBlacklistCountdown = (remainingSeconds: number): string => {
@@ -1809,9 +1864,9 @@ const handleImportClick = async () => {
 /* 黑名单横幅 */
 .blacklist-banner {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   margin-top: 8px;
   background: rgba(239, 68, 68, 0.1);
   border-left: 3px solid #ef4444;
@@ -1825,6 +1880,12 @@ const handleImportClick = async () => {
   color: #f87171;
 }
 
+.blacklist-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .blacklist-icon {
   font-size: 16px;
   flex-shrink: 0;
@@ -1835,23 +1896,146 @@ const handleImportClick = async () => {
   font-weight: 500;
 }
 
+.blacklist-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .unblock-btn {
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
   color: #fff;
-  background: #ef4444;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-.unblock-btn:hover {
+.unblock-btn.primary {
+  background: #ef4444;
+  flex: 1;
+}
+
+.unblock-btn.primary:hover {
   background: #dc2626;
+}
+
+.unblock-btn.secondary {
+  background: #6b7280;
+  flex: 1;
+}
+
+.unblock-btn.secondary:hover {
+  background: #4b5563;
 }
 
 .unblock-btn:active {
   transform: scale(0.98);
+}
+
+/* 等级徽章（黑名单模式：黑色/红色） */
+.level-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.level-badge.level-1 {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.level-badge.level-2 {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.level-badge.level-3 {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.level-badge.level-4 {
+  background: #fca5a5;
+  color: #b91c1c;
+}
+
+.level-badge.level-5 {
+  background: #ef4444;
+  color: #fff;
+}
+
+.level-badge.dark.level-1 {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fbbf24;
+}
+
+.level-badge.dark.level-2 {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fb923c;
+}
+
+.level-badge.dark.level-3 {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+.level-badge.dark.level-4 {
+  background: rgba(185, 28, 28, 0.2);
+  color: #ef4444;
+}
+
+.level-badge.dark.level-5 {
+  background: rgba(220, 38, 38, 0.3);
+  color: #fff;
+}
+
+/* 独立等级徽章（未拉黑但有等级） */
+.level-badge-standalone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  background: rgba(156, 163, 175, 0.1);
+  border-left: 3px solid #9ca3af;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.level-hint {
+  flex: 1;
+  font-weight: 500;
+}
+
+.reset-level-mini {
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.reset-level-mini:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+.reset-level-mini:active {
+  transform: scale(0.95);
 }
 </style>

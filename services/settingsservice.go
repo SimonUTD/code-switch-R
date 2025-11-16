@@ -1,7 +1,10 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/daodao97/xgo/xdb"
@@ -10,10 +13,55 @@ import (
 // SettingsService 管理全局配置
 type SettingsService struct{}
 
-// BlacklistSettings 黑名单配置
+// BlacklistSettings 黑名单配置（基础配置，向后兼容）
 type BlacklistSettings struct {
 	FailureThreshold int `json:"failureThreshold"` // 失败次数阈值
 	DurationMinutes  int `json:"durationMinutes"`  // 拉黑时长（分钟）
+}
+
+// BlacklistLevelConfig 等级拉黑配置（v0.4.0 新增）
+type BlacklistLevelConfig struct {
+	// 功能开关
+	EnableLevelBlacklist bool `json:"enableLevelBlacklist"` // 是否启用等级拉黑
+
+	// 基础配置
+	FailureThreshold     int     `json:"failureThreshold"`     // 失败阈值（连续失败次数）
+	DedupeWindowSeconds  int     `json:"dedupeWindowSeconds"`  // 去重窗口（秒）
+
+	// 降级配置
+	NormalDegradeIntervalHours float64 `json:"normalDegradeIntervalHours"` // 正常降级间隔（小时）
+	ForgivenessHours           float64 `json:"forgivenessHours"`           // 宽恕触发时间（小时）
+	JumpPenaltyWindowHours     float64 `json:"jumpPenaltyWindowHours"`     // 跳级惩罚窗口（小时）
+
+	// 等级时长配置（分钟）
+	L1DurationMinutes int `json:"l1DurationMinutes"` // L1 拉黑时长
+	L2DurationMinutes int `json:"l2DurationMinutes"` // L2 拉黑时长
+	L3DurationMinutes int `json:"l3DurationMinutes"` // L3 拉黑时长
+	L4DurationMinutes int `json:"l4DurationMinutes"` // L4 拉黑时长
+	L5DurationMinutes int `json:"l5DurationMinutes"` // L5 拉黑时长
+
+	// 开关关闭时的行为
+	FallbackMode            string `json:"fallbackMode"`            // fixed=固定拉黑, none=不拉黑
+	FallbackDurationMinutes int    `json:"fallbackDurationMinutes"` // 固定拉黑时长（分钟）
+}
+
+// DefaultBlacklistLevelConfig 返回默认的等级拉黑配置
+func DefaultBlacklistLevelConfig() *BlacklistLevelConfig {
+	return &BlacklistLevelConfig{
+		EnableLevelBlacklist:       false, // 默认关闭，向后兼容
+		FailureThreshold:           3,
+		DedupeWindowSeconds:        30,
+		NormalDegradeIntervalHours: 1.0,
+		ForgivenessHours:           3.0,
+		JumpPenaltyWindowHours:     2.5,
+		L1DurationMinutes:          5,
+		L2DurationMinutes:          15,
+		L3DurationMinutes:          60,
+		L4DurationMinutes:          360,  // 6小时
+		L5DurationMinutes:          1440, // 24小时
+		FallbackMode:               "fixed",
+		FallbackDurationMinutes:    30,
+	}
 }
 
 func NewSettingsService() *SettingsService {
