@@ -32,7 +32,43 @@ func NewBlacklistService(settingsService *SettingsService) *BlacklistService {
 	}
 }
 
-// RecordFailure 记录 provider 失败，失败次数达到阈值时自动拉黑
+// RecordSuccess 记录 provider 成功，清零连续失败计数
+func (bs *BlacklistService) RecordSuccess(platform string, providerName string) error {
+	db, err := xdb.DB("default")
+	if err != nil {
+		return fmt.Errorf("获取数据库连接失败: %w", err)
+	}
+
+	// 检查是否存在记录
+	var id int
+	err = db.QueryRow(`
+		SELECT id FROM provider_blacklist
+		WHERE platform = ? AND provider_name = ?
+	`, platform, providerName).Scan(&id)
+
+	if err == sql.ErrNoRows {
+		// 没有失败记录，无需操作
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("查询黑名单记录失败: %w", err)
+	}
+
+	// 清零失败计数（连续失败中断）
+	_, err = db.Exec(`
+		UPDATE provider_blacklist
+		SET failure_count = 0
+		WHERE id = ?
+	`, id)
+
+	if err != nil {
+		return fmt.Errorf("清零失败计数失败: %w", err)
+	}
+
+	log.Printf("✅ Provider %s/%s 成功，连续失败计数已清零", platform, providerName)
+	return nil
+}
+
+// RecordFailure 记录 provider 失败，连续失败次数达到阈值时自动拉黑
 func (bs *BlacklistService) RecordFailure(platform string, providerName string) error {
 	db, err := xdb.DB("default")
 	if err != nil {

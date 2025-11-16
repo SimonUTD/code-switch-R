@@ -275,6 +275,12 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 		if ok {
 			fmt.Printf("[INFO] ✓ 成功: %s (Level %d) | 耗时: %.2fs\n", firstProvider.Name, firstLevel, duration.Seconds())
+
+			// 成功：清零连续失败计数
+			if err := prs.blacklistService.RecordSuccess(kind, firstProvider.Name); err != nil {
+				fmt.Printf("[WARN] 清零失败计数失败: %v\n", err)
+			}
+
 			return
 		}
 
