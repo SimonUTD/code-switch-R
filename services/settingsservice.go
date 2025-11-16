@@ -166,3 +166,48 @@ func (ss *SettingsService) GetBlacklistSettingsStruct() (*BlacklistSettings, err
 		DurationMinutes:  duration,
 	}, nil
 }
+
+// GetLevelBlacklistEnabled 获取等级拉黑开关状态
+func (ss *SettingsService) GetLevelBlacklistEnabled() (bool, error) {
+	db, err := xdb.DB("default")
+	if err != nil {
+		return false, fmt.Errorf("获取数据库连接失败: %w", err)
+	}
+
+	var enabledStr string
+	err = db.QueryRow(`
+		SELECT value FROM app_settings WHERE key = 'blacklist_level_enabled'
+	`).Scan(&enabledStr)
+
+	if err != nil {
+		// 如果找不到记录，返回默认值 false（向后兼容）
+		return false, nil
+	}
+
+	return enabledStr == "true", nil
+}
+
+// SetLevelBlacklistEnabled 设置等级拉黑开关状态
+func (ss *SettingsService) SetLevelBlacklistEnabled(enabled bool) error {
+	db, err := xdb.DB("default")
+	if err != nil {
+		return fmt.Errorf("获取数据库连接失败: %w", err)
+	}
+
+	enabledStr := "false"
+	if enabled {
+		enabledStr = "true"
+	}
+
+	// 使用 UPSERT 模式：如果存在则更新，不存在则插入
+	_, err = db.Exec(`
+		INSERT INTO app_settings (key, value) VALUES ('blacklist_level_enabled', ?)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value
+	`, enabledStr)
+
+	if err != nil {
+		return fmt.Errorf("设置等级拉黑开关失败: %w", err)
+	}
+
+	return nil
+}

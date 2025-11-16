@@ -162,7 +162,8 @@
         "resetLevelHint": "Reset level only, keep blacklist status",
         "resetLevelSuccess": "{name} level has been reset",
         "resetLevelFailed": "Failed to reset level",
-        "levelHint": "Has failure record"
+        "levelHint": "Has failure record",
+        "levelTitle": "Blacklist Level L{level}"
       }
     },
     "logs": {

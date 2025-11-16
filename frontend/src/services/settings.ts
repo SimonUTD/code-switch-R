@@ -29,3 +29,20 @@ export const updateBlacklistSettings = async (
 ): Promise<void> => {
   await Call.ByName(`${SETTINGS_SERVICE}.UpdateBlacklistSettings`, threshold, duration)
 }
+
+/**
+ * 获取等级拉黑开关状态
+ * @returns 是否启用等级拉黑机制
+ */
+export const getLevelBlacklistEnabled = async (): Promise<boolean> => {
+  const result = await Call.ByName(`${SETTINGS_SERVICE}.GetLevelBlacklistEnabled`)
+  return result as boolean
+}
+
+/**
+ * 设置等级拉黑开关状态
+ * @param enabled 是否启用等级拉黑机制
+ */
+export const setLevelBlacklistEnabled = async (enabled: boolean): Promise<void> => {
+  await Call.ByName(`${SETTINGS_SERVICE}.SetLevelBlacklistEnabled`, enabled)
+}

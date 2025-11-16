@@ -314,8 +314,20 @@
             <div class="card-text">
               <div class="card-title-row">
                 <p class="card-title">{{ card.name }}</p>
-                <span v-if="card.level" class="level-badge" :class="`level-${card.level}`">
+                <span v-if="card.level" class="level-badge scheduling-level" :class="`level-${card.level}`">
                   L{{ card.level }}
+                </span>
+                <!-- 黑名单等级徽章（始终显示，包括 L0） -->
+                <span
+                  v-if="getProviderBlacklistStatus(card.name)"
+                  :class="[
+                    'blacklist-level-badge',
+                    `bl-level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`,
+                    { dark: resolvedTheme === 'dark' }
+                  ]"
+                  :title="t('components.main.blacklist.levelTitle', { level: getProviderBlacklistStatus(card.name)!.blacklistLevel })"
+                >
+                  BL{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
                 </span>
                 <button
                   v-if="card.officialSite"
@@ -2037,5 +2049,78 @@ const handleImportClick = async () => {
 
 .reset-level-mini:active {
   transform: scale(0.95);
+}
+
+/* 黑名单等级徽章（卡片标题行） */
+.blacklist-level-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.blacklist-level-badge.bl-level-0 {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.blacklist-level-badge.bl-level-1 {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.blacklist-level-badge.bl-level-2 {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.blacklist-level-badge.bl-level-3 {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.blacklist-level-badge.bl-level-4 {
+  background: #fca5a5;
+  color: #b91c1c;
+}
+
+.blacklist-level-badge.bl-level-5 {
+  background: #ef4444;
+  color: #fff;
+}
+
+.blacklist-level-badge.dark.bl-level-0 {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.blacklist-level-badge.dark.bl-level-1 {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fbbf24;
+}
+
+.blacklist-level-badge.dark.bl-level-2 {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fb923c;
+}
+
+.blacklist-level-badge.dark.bl-level-3 {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+.blacklist-level-badge.dark.bl-level-4 {
+  background: rgba(185, 28, 28, 0.2);
+  color: #ef4444;
+}
+
+.blacklist-level-badge.dark.bl-level-5 {
+  background: rgba(220, 38, 38, 0.3);
+  color: #fff;
 }
 </style>

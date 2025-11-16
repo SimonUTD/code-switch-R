@@ -163,7 +163,8 @@
         "resetLevelHint": "仅清零等级，保留拉黑状态",
         "resetLevelSuccess": "已清零 {name} 的等级",
         "resetLevelFailed": "清零等级失败，请稍后重试",
-        "levelHint": "有失败记录"
+        "levelHint": "有失败记录",
+        "levelTitle": "黑名单等级 L{level}"
       }
     },
     "logs": {
@@ -251,6 +252,8 @@
         "blacklistThreshold": "失败次数阈值",
         "blacklistDuration": "拉黑时长",
         "saveBlacklist": "保存配置",
+        "enableLevelBlacklist": "启用等级拉黑",
+        "enableLevelBlacklistHint": "开启后使用分级拉黑机制（L1-L5），关闭则使用固定时长",
         "times": "次",
         "minutes": "分钟",
         "save": "保存",

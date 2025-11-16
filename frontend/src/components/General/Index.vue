@@ -7,7 +7,7 @@ import ThemeSetting from '../Setting/ThemeSetting.vue'
 import { fetchAppSettings, saveAppSettings, type AppSettings } from '../../services/appSettings'
 import { checkUpdate, downloadUpdate, restartApp, getUpdateState, setAutoCheckEnabled, type UpdateState } from '../../services/update'
 import { fetchCurrentVersion } from '../../services/version'
-import { getBlacklistSettings, updateBlacklistSettings, type BlacklistSettings } from '../../services/settings'
+import { getBlacklistSettings, updateBlacklistSettings, getLevelBlacklistEnabled, setLevelBlacklistEnabled, type BlacklistSettings } from '../../services/settings'
 
 const router = useRouter()
 // 从 localStorage 读取缓存值作为初始值，避免加载时的视觉闪烁
@@ -31,6 +31,7 @@ const appVersion = ref('')
 // 拉黑配置相关状态
 const blacklistThreshold = ref(3)
 const blacklistDuration = ref(30)
+const levelBlacklistEnabled = ref(false)
 const blacklistLoading = ref(false)
 const blacklistSaving = ref(false)
 
@@ -183,11 +184,16 @@ const loadBlacklistSettings = async () => {
     const settings = await getBlacklistSettings()
     blacklistThreshold.value = settings.failureThreshold
     blacklistDuration.value = settings.durationMinutes
+
+    // 加载等级拉黑开关状态
+    const levelEnabled = await getLevelBlacklistEnabled()
+    levelBlacklistEnabled.value = levelEnabled
   } catch (error) {
     console.error('failed to load blacklist settings', error)
     // 使用默认值
     blacklistThreshold.value = 3
     blacklistDuration.value = 30
+    levelBlacklistEnabled.value = false
   } finally {
     blacklistLoading.value = false
   }
@@ -203,6 +209,22 @@ const saveBlacklistSettings = async () => {
   } catch (error) {
     console.error('failed to save blacklist settings', error)
     alert('保存失败：' + (error as Error).message)
+  } finally {
+    blacklistSaving.value = false
+  }
+}
+
+// 切换等级拉黑开关
+const toggleLevelBlacklist = async () => {
+  if (blacklistLoading.value || blacklistSaving.value) return
+  blacklistSaving.value = true
+  try {
+    await setLevelBlacklistEnabled(levelBlacklistEnabled.value)
+  } catch (error) {
+    console.error('failed to toggle level blacklist', error)
+    // 回滚状态
+    levelBlacklistEnabled.value = !levelBlacklistEnabled.value
+    alert('切换失败：' + (error as Error).message)
   } finally {
     blacklistSaving.value = false
   }
@@ -287,6 +309,20 @@ onMounted(async () => {
       <section>
         <h2 class="mac-section-title">{{ $t('components.general.title.blacklist') }}</h2>
         <div class="mac-panel">
+          <ListItem :label="$t('components.general.label.enableLevelBlacklist')">
+            <div class="toggle-with-hint">
+              <label class="mac-switch">
+                <input
+                  type="checkbox"
+                  :disabled="blacklistLoading || blacklistSaving"
+                  v-model="levelBlacklistEnabled"
+                  @change="toggleLevelBlacklist"
+                />
+                <span></span>
+              </label>
+              <span class="hint-text">{{ $t('components.general.label.enableLevelBlacklistHint') }}</span>
+            </div>
+          </ListItem>
           <ListItem :label="$t('components.general.label.blacklistThreshold')">
             <select
               v-model.number="blacklistThreshold"
@@ -396,3 +432,24 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.toggle-with-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.hint-text {
+  font-size: 11px;
+  color: var(--mac-text-secondary);
+  line-height: 1.3;
+  max-width: 280px;
+  text-align: right;
+}
+
+:global(.dark) .hint-text {
+  color: rgba(255, 255, 255, 0.5);
+}
+</style>
