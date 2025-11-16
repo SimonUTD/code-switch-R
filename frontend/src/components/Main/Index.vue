@@ -618,7 +618,7 @@
 import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
-import { Browser } from '@wailsio/runtime'
+import { Browser, Call } from '@wailsio/runtime'
 import {
 	buildUsageHeatmapMatrix,
 	generateFallbackUsageHeatmap,
