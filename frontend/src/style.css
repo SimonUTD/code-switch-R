@@ -1619,7 +1619,11 @@ html.dark .ghost-icon:hover {
   width: 100%;
 }
 
-/* 全局按钮样式修复 - 防止 Tailwind Preflight 导致的文字溢出 */
+/* 全局按钮样式修复 - 防止 Tailwind Preflight 导致的布局问题 */
 button {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
