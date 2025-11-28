@@ -129,46 +129,66 @@ func detectPortableMode() bool {
 
 // CheckUpdate 检查更新（带网络容错）
 func (us *UpdateService) CheckUpdate() (*UpdateInfo, error) {
+	log.Printf("[UpdateService] 开始检查更新，当前版本: %s", us.currentVersion)
+
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 15 * time.Second, // 增加超时时间从10秒到15秒
 	}
 
 	releaseURL := "https://api.github.com/repos/Rogers-F/code-switch-R/releases/latest"
 
 	req, err := http.NewRequest("GET", releaseURL, nil)
 	if err != nil {
+		log.Printf("[UpdateService] ❌ 创建请求失败: %v", err)
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "CodeSwitch/"+us.currentVersion)
 
+	log.Printf("[UpdateService] 请求 GitHub API: %s", releaseURL)
+
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("[UpdateService] ❌ GitHub API 不可达: %v", err)
 		return nil, fmt.Errorf("GitHub API 不可达: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		log.Printf("[UpdateService] ❌ GitHub API 返回错误状态码: %d", resp.StatusCode)
 		return nil, fmt.Errorf("GitHub API 返回错误状态码: %d", resp.StatusCode)
 	}
 
 	var release GitHubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		log.Printf("[UpdateService] ❌ 解析响应失败: %v", err)
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
+
+	log.Printf("[UpdateService] 最新版本: %s", release.TagName)
 
 	// 比较版本号
 	needUpdate, err := us.compareVersions(us.currentVersion, release.TagName)
 	if err != nil {
+		log.Printf("[UpdateService] ❌ 版本比较失败: %v (current=%s, latest=%s)", err, us.currentVersion, release.TagName)
 		return nil, fmt.Errorf("版本比较失败: %w", err)
+	}
+
+	if needUpdate {
+		log.Printf("[UpdateService] ✅ 发现新版本: %s → %s", us.currentVersion, release.TagName)
+	} else {
+		log.Printf("[UpdateService] ✅ 已是最新版本: %s", us.currentVersion)
 	}
 
 	// 查找当前平台的下载链接
 	downloadURL := us.findPlatformAsset(release.Assets)
 	if downloadURL == "" {
+		log.Printf("[UpdateService] ❌ 未找到适用于 %s 的安装包", runtime.GOOS)
 		return nil, fmt.Errorf("未找到适用于 %s 的安装包", runtime.GOOS)
 	}
+
+	log.Printf("[UpdateService] 下载链接: %s", downloadURL)
 
 	us.mu.Lock()
 	us.latestVersion = release.TagName
