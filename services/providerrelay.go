@@ -399,12 +399,20 @@ func (prs *ProviderRelayService) forwardRequest(
 	if status == 0 {
 		fmt.Printf("[WARN] Provider %s 返回状态码 0，但无错误，当作成功处理\n", provider.Name)
 		_, copyErr := resp.ToHttpResponseWriter(c.Writer, ReqeustLogHook(c, kind, requestLog))
-		return copyErr == nil, copyErr
+		if copyErr != nil {
+			fmt.Printf("[WARN] 复制响应到客户端失败（不影响provider成功判定）: %v\n", copyErr)
+		}
+		// 只要provider返回了响应，就算成功（复制失败是客户端问题，不是provider问题）
+		return true, nil
 	}
 
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
 		_, copyErr := resp.ToHttpResponseWriter(c.Writer, ReqeustLogHook(c, kind, requestLog))
-		return copyErr == nil, copyErr
+		if copyErr != nil {
+			fmt.Printf("[WARN] 复制响应到客户端失败（不影响provider成功判定）: %v\n", copyErr)
+		}
+		// 只要provider返回了2xx状态码，就算成功（复制失败是客户端问题，不是provider问题）
+		return true, nil
 	}
 
 	return false, fmt.Errorf("upstream status %d", status)
