@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  TestEndpoints
+  TestEndpoints,
+  GetEndpointRecords,
+  AddEndpointRecord,
+  RemoveEndpointRecord
 } from '../../../bindings/codeswitch/services/speedtestservice'
 import type { EndpointLatency } from '../../../bindings/codeswitch/services/models'
 
@@ -12,18 +15,38 @@ interface Endpoint {
   url: string
   result: EndpointLatency | null
   testing: boolean
+  lastTestTime?: number
+  lastTestSpeed?: number
 }
 
 const newUrl = ref('')
-const endpoints = ref<Endpoint[]>([
-  { url: 'https://api.anthropic.com', result: null, testing: false },
-  { url: 'https://api.openai.com', result: null, testing: false }
-])
+const endpoints = ref<Endpoint[]>([])
 const isTesting = ref(false)
+
+// 加载端点记录
+async function loadEndpoints() {
+  try {
+    const records = await GetEndpointRecords()
+    endpoints.value = records.map(record => ({
+      url: record.url,
+      result: null,
+      testing: false,
+      lastTestTime: record.lastTestTime || undefined,
+      lastTestSpeed: record.lastTestSpeed || undefined
+    }))
+  } catch (error) {
+    console.error('加载端点失败:', error)
+    // 如果加载失败，使用默认端点
+    endpoints.value = [
+      { url: 'https://api.anthropic.com', result: null, testing: false },
+      { url: 'https://api.openai.com', result: null, testing: false }
+    ]
+  }
+}
 
 const endpointCount = computed(() => endpoints.value.length)
 
-function addEndpoint() {
+async function addEndpoint() {
   if (!newUrl.value.trim()) return
 
   // 基础 URL 校验
@@ -38,16 +61,27 @@ function addEndpoint() {
     return
   }
 
-  endpoints.value.push({
-    url: newUrl.value,
-    result: null,
-    testing: false
-  })
-  newUrl.value = ''
+  try {
+    await AddEndpointRecord(newUrl.value)
+    endpoints.value.push({
+      url: newUrl.value,
+      result: null,
+      testing: false
+    })
+    newUrl.value = ''
+  } catch (error) {
+    console.error('添加端点失败:', error)
+  }
 }
 
-function removeEndpoint(index: number) {
-  endpoints.value.splice(index, 1)
+async function removeEndpoint(index: number) {
+  const url = endpoints.value[index].url
+  try {
+    await RemoveEndpointRecord(url)
+    endpoints.value.splice(index, 1)
+  } catch (error) {
+    console.error('移除端点失败:', error)
+  }
 }
 
 async function runTest() {
@@ -98,6 +132,45 @@ function getLatencyText(result: EndpointLatency | null): string {
   }
   return `${result.latency}ms`
 }
+
+function formatDateTime(timestamp?: number): string {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp * 1000)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function getLastTestInfo(endpoint: Endpoint): string {
+  // 优先显示当前正在测试的结果
+  if (endpoint.result) {
+    if (endpoint.result.latency) {
+      return `当前: ${endpoint.result.latency}ms`
+    } else if (endpoint.result.error) {
+      return `当前: 失败`
+    }
+  }
+
+  // 显示历史测试结果
+  if (endpoint.lastTestTime) {
+    if (endpoint.lastTestSpeed) {
+      return `上次: ${formatDateTime(endpoint.lastTestTime)} - ${endpoint.lastTestSpeed}ms`
+    } else {
+      return `上次: ${formatDateTime(endpoint.lastTestTime)} - 失败`
+    }
+  }
+
+  return '未测试'
+}
+
+// 组件挂载时加载端点
+onMounted(() => {
+  loadEndpoints()
+})
 </script>
 
 <template>
@@ -178,6 +251,10 @@ function getLatencyText(result: EndpointLatency | null): string {
             {{ getLatencyText(endpoint.result) }}
           </span>
           <span v-else class="result-pending">-</span>
+        </div>
+
+        <div class="endpoint-info">
+          <span class="last-test-info">{{ getLastTestInfo(endpoint) }}</span>
         </div>
 
         <button class="remove-btn" @click="removeEndpoint(index)">
@@ -411,6 +488,17 @@ function getLatencyText(result: EndpointLatency | null): string {
 
 .result-pending {
   color: var(--mac-text-secondary);
+}
+
+.endpoint-info {
+  min-width: 200px;
+  text-align: right;
+}
+
+.last-test-info {
+  font-size: 0.75rem;
+  color: var(--mac-text-secondary);
+  display: block;
 }
 
 .remove-btn {

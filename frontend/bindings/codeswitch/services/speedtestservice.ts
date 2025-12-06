@@ -15,6 +15,75 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
+ * AddEndpoint 添加新的端点
+ */
+export function AddEndpoint(url: string): $CancellablePromise<void> {
+    return $Call.ByID(3537050087, url);
+}
+
+/**
+ * AddEndpointRecord 添加端点记录（供前端调用）
+ */
+export function AddEndpointRecord(url: string): $CancellablePromise<void> {
+    return $Call.ByID(4173687630, url);
+}
+
+/**
+ * ExtractEndpointsFromConfigs 从配置文件中提取API端点
+ */
+export function ExtractEndpointsFromConfigs(relayAddr: string): $CancellablePromise<string[]> {
+    return $Call.ByID(1967645769, relayAddr).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * GetEndpointRecords 获取端点记录（供前端调用）
+ */
+export function GetEndpointRecords(): $CancellablePromise<$models.EndpointRecord[]> {
+    return $Call.ByID(2411544154).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * LoadEndpoints 加载端点清单
+ */
+export function LoadEndpoints(): $CancellablePromise<$models.EndpointRecord[]> {
+    return $Call.ByID(3956469619).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * RefreshEndpointsFromConfigs 从配置文件刷新端点清单
+ */
+export function RefreshEndpointsFromConfigs(relayAddr: string): $CancellablePromise<void> {
+    return $Call.ByID(808770027, relayAddr);
+}
+
+/**
+ * RemoveEndpoint 移除端点
+ */
+export function RemoveEndpoint(url: string): $CancellablePromise<void> {
+    return $Call.ByID(2770778430, url);
+}
+
+/**
+ * RemoveEndpointRecord 移除端点记录（供前端调用）
+ */
+export function RemoveEndpointRecord(url: string): $CancellablePromise<void> {
+    return $Call.ByID(3239347307, url);
+}
+
+/**
+ * SaveEndpoints 保存端点清单
+ */
+export function SaveEndpoints(records: $models.EndpointRecord[]): $CancellablePromise<void> {
+    return $Call.ByID(707953084, records);
+}
+
+/**
  * Start Wails生命周期方法
  */
 export function Start(): $CancellablePromise<void> {
@@ -34,10 +103,20 @@ export function Stop(): $CancellablePromise<void> {
  */
 export function TestEndpoints(urls: string[], timeoutSecs: number | null): $CancellablePromise<$models.EndpointLatency[]> {
     return $Call.ByID(846920271, urls, timeoutSecs).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType4($result);
     });
 }
 
+/**
+ * UpdateEndpointTestResult 更新端点测试结果
+ */
+export function UpdateEndpointTestResult(url: string, latency: number | null): $CancellablePromise<void> {
+    return $Call.ByID(1232285574, url, latency);
+}
+
 // Private type creation functions
-const $$createType0 = $models.EndpointLatency.createFrom;
-const $$createType1 = $Create.Array($$createType0);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = $models.EndpointRecord.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = $models.EndpointLatency.createFrom;
+const $$createType4 = $Create.Array($$createType3);

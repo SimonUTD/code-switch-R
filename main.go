@@ -110,7 +110,7 @@ func main() {
 	envCheckService := services.NewEnvCheckService()
 	importService := services.NewImportService(providerService, mcpService)
 	deeplinkService := services.NewDeepLinkService(providerService)
-	speedTestService := services.NewSpeedTestService()
+	speedTestService := services.NewSpeedTestServiceWithAddr(providerRelay.Addr())
 	dockService := dock.New()
 	versionService := NewVersionService()
 	consoleService := services.NewConsoleService()
