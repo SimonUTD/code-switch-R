@@ -1,4 +1,4 @@
-# Code Switch
+# Code Switch R
 
 集中管理 Claude Code、Codex 和 Gemini CLI 的 AI 供应商配置
 
@@ -6,8 +6,10 @@
 
 - **平滑切换供应商** - 无需重启 Claude Code/Codex/Gemini CLI，实时切换不同供应商
 - **智能降级机制** - 支持多供应商分级优先级调度（Level 1-10），自动故障转移
+- **模型白名单与映射** - 配置供应商支持的模型列表，自动转换模型名称
 - **用量统计追踪** - 请求级别的 Token 用量统计和成本核算
 - **MCP 服务器管理** - Claude Code 和 Codex 双平台 MCP Server 集中配置
+- **CLI 配置编辑器** - 可视化编辑 CLI 配置，支持配置文件预览和智能粘贴
 - **技能市场** - Claude Skill 自动下载与安装，内置热门技能仓库
 - **Gemini CLI 管理** - 支持 Google OAuth、API Key、PackyCode 等多种认证方式
 - **深度链接导入** - 通过 `ccswitch://` 协议一键导入供应商配置
@@ -83,8 +85,47 @@ sudo dnf install codeswitch-*.rpm
 1. 优先尝试 Level 1（最高优先级）的所有供应商
 2. 失败后依次尝试 Level 2、Level 3 等
 3. 同一 Level 内按用户排序依次尝试
+4. 自动检查模型兼容性，跳过不支持的供应商
 
 这让 CLI 看到的是固定的本地地址，而请求被透明路由到你配置的供应商列表。
+
+## 特色功能
+
+### 优先级分组调度
+
+将供应商分为 1-10 个优先级级别：
+- **Level 1**: 首选供应商（如官方 API）
+- **Level 2-3**: 备选供应商（如第三方服务）
+- **Level 4+**: 兜底供应商
+
+同一级别内的供应商可通过拖拽调整顺序。
+
+### 模型白名单与映射
+
+针对不同供应商的模型命名差异，配置映射规则：
+
+```json
+{
+  "supportedModels": {
+    "anthropic/claude-*": true
+  },
+  "modelMapping": {
+    "claude-*": "anthropic/claude-*"
+  }
+}
+```
+
+支持通配符匹配，自动转换请求中的模型名称。
+
+### CLI 配置编辑器
+
+可视化管理 Claude Code、Codex、Gemini 的 CLI 配置文件：
+
+- **锁定字段**: 由代理托管，确保请求正确路由
+- **可编辑字段**: 模型、思考模式、插件等用户配置
+- **自定义字段**: 添加任意自定义配置项
+- **配置预览**: 查看原始配置文件内容（Codex 同时显示 config.toml 和 auth.json）
+- **智能粘贴**: 在空白区域粘贴 JSON/TOML/ENV 格式配置，自动识别并填充字段
 
 ## 界面预览
 
