@@ -5,16 +5,16 @@
 :root {
   color-scheme: light;
   --mac-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  --mac-surface: #ffffff;
-  --mac-surface-strong: #f5f5f7;
-  --mac-border: rgba(15, 23, 42, 0.12);
+  --mac-surface: #FFFFFF;
+  --mac-surface-strong: #FFFFFF;
+  --mac-border: rgba(0, 0, 0, 0.06);
   --mac-divider: rgba(15, 23, 42, 0.12);
   --mac-sidebar: #f2f3f5;
   --mac-sidebar-border: rgba(15, 23, 42, 0.08);
   --mac-text: #1d1d1f;
   --mac-text-secondary: #6e6e73;
   --mac-accent: #0a84ff;
-  --app-background: linear-gradient(180deg, #f6f7fb 0%, #eef1f7 50%, #e7ebf5 100%);
+  --app-background: #F5F5F7;
   --contrib-surface: #f6f8fa;
   --contrib-text: #0f1116;
   --contrib-muted: rgba(15, 23, 42, 0.6);
@@ -385,7 +385,7 @@ html.dark .mac-sidebar-item:hover {
   position: relative;
   background: var(--contrib-surface, #0f1116);
   border-radius: 24px;
-  padding: 32px;
+  padding: 10px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
@@ -579,11 +579,29 @@ html.dark .mac-sidebar-item:hover {
   position: relative;
 }
 
+
 /* 左侧占位符，用于居中 tab-group */
 .section-header::before {
-  content: '';
+
   flex: 1;
   min-width: 0;
+}
+
+.tab-group-container {
+  display: flex;
+  align-items: center;
+  flex: 1; /* 核心：占据左侧所有剩余空间，把右侧按钮挤过去 */
+  min-width: 0; /* 核心：防止 flex 子元素导致父容器溢出 */
+  overflow-x: auto; /* 如果 Tab 太多，允许横向滚动 */
+  padding-right: 16px; /* 与右侧控制区保持安全距离 */
+  
+  /* 隐藏滚动条，保持美观 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE 10+ */
+}
+
+.tab-group-container::-webkit-scrollbar { 
+  display: none; /* Chrome/Safari */
 }
 
 .tab-group {
@@ -1173,7 +1191,7 @@ html.dark .mac-sidebar-item:hover {
 
 .automation-card {
   width: 100%;
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid var(--mac-border);
   background: var(--mac-surface);
   padding: 18px 20px;
@@ -1181,13 +1199,19 @@ html.dark .mac-sidebar-item:hover {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease;
 }
 
 .automation-card.dragging {
   opacity: 0.6;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.automation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06); /* hover 时阴影加深 */
+  border-color: rgba(0,0,0,0.1);
 }
 
 .card-leading {
@@ -1322,9 +1346,10 @@ html.dark .card-meta {
 }
 
 .ghost-icon {
+  border-radius: 8px; /* 方形圆角更现代 */
+  background: transparent; /* 默认透明 */
+  color: var(--mac-text-secondary);
   border: none;
-  background: rgba(15, 23, 42, 0.08);
-  color: var(--mac-text);
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -1346,7 +1371,8 @@ html.dark .ghost-icon {
 }
 
 .ghost-icon:hover {
-  background: rgba(15, 23, 42, 0.15);
+  background: rgba(0,0,0,0.05);
+  color: var(--mac-text);
 }
 
 html.dark .ghost-icon:hover {
@@ -1751,11 +1777,19 @@ button svg {
   background: var(--app-background);
 }
 
+html.dark .page-header {
+  background: rgba(0, 0, 0, 0.6);
+}
+
 .page-header {
-  background: var(--app-background);
+  background: rgba(245, 245, 247, 0.7); /* 降低不透明度 */
+  backdrop-filter: blur(20px); /* 核心：强毛玻璃 */
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--mac-border);
+  position: sticky;
+  top: 0;
   z-index: 100;
-  flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .page-header--sticky {
@@ -1764,45 +1798,45 @@ button svg {
 }
 
 .page-header-content {
+  height: 64px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: 16px 48px 0;
+  padding: 0 20px;
   gap: var(--spacing-section);
 }
 
 .page-title-section {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: var(--spacing-md);
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 
 .page-eyebrow {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--mac-accent);
-  margin: 0;
-  line-height: 1;
+  letter-spacing: 0.05em;
+  color: var(--mac-text);
 }
 
 .page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--mac-text);
-  margin: 0;
-  line-height: 1.2;
+  /* font-size: 1.25rem; */
+  font-weight: 400;
+  color: var(--mac-text-secondary);
+  margin: 0 16px;
+  letter-spacing: -0.01em;
 }
 
 .page-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-tight);
-  flex-shrink: 0;
-  margin-top: 2px;
+  gap: 8px;
+  background: rgba(0,0,0,0.03);
+  padding: 4px;
+  border-radius: 10px;
 }
 
 .back-button {

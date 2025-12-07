@@ -15,9 +15,9 @@
               <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <div>
+          <div style="display: inline-flex;">
             <p v-if="eyebrow" class="page-eyebrow">{{ eyebrow }}</p>
-            <h1 v-if="title" class="page-title">{{ title }}</h1>
+            <p v-if="title" class="page-title">-&emsp;{{ title }}</p>
           </div>
         </div>
 

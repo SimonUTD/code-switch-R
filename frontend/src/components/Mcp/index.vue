@@ -1,74 +1,38 @@
 <template>
-  <PageLayout
-    :eyebrow="t('components.mcp.hero.eyebrow')"
-    :title="t('components.mcp.hero.title')"
-  >
+  <PageLayout :eyebrow="t('components.mcp.hero.eyebrow')" :title="t('components.mcp.hero.title')">
     <template #actions>
       <button class="ghost-icon" :aria-label="t('components.mcp.controls.settings')" @click="goToSettings">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
+          <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" fill="none" />
           <path
             d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
       </button>
     </template>
 
     <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
-      <section class="contrib-hero">
+      <!-- <section class="contrib-hero">
         <p class="lead">{{ t('components.mcp.hero.lead') }}</p>
-      </section>
+      </section> -->
 
       <section class="automation-section">
         <div class="section-header section-header-solo">
           <div class="section-controls">
-            <button
-              class="ghost-icon"
-              :aria-label="t('components.mcp.controls.refresh')"
-              :disabled="loading"
-              @click="reload"
-            >
+            <button class="ghost-icon" :aria-label="t('components.mcp.controls.refresh')" :disabled="loading"
+              @click="reload">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M20.5 8a8.5 8.5 0 10-2.38 7.41"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M20.5 4v4h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
+                <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" />
               </svg>
             </button>
             <button class="ghost-icon" :aria-label="t('components.mcp.controls.create')" @click="openCreateModal">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M12 5v14M5 12h14"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  fill="none"
-                />
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" fill="none" />
               </svg>
             </button>
           </div>
@@ -86,287 +50,219 @@
         </div>
 
         <div v-else class="automation-list">
-          <article v-for="server in servers" :key="server.name" class="automation-card">
-            <div class="card-leading">
+          <article v-for="server in servers" :key="server.name" class="automation-card mcp-card">
+            <div class="mcp-info-group">
               <div class="card-icon" :style="iconStyle(server.name)">
-                <span v-if="iconSvg(server.name)" class="icon-svg" v-html="iconSvg(server.name)" aria-hidden="true"></span>
+                <span v-if="iconSvg(server.name)" class="icon-svg" v-html="iconSvg(server.name)"></span>
                 <span v-else class="icon-fallback">{{ serverInitials(server.name) }}</span>
               </div>
-              <div class="card-text">
-                <div class="card-title-row">
-                  <p class="card-title">{{ server.name }}</p>
-                  <span class="chip">{{ typeLabel(server.type) }}</span>
+              <div class="mcp-text">
+                <div class="mcp-header">
+                  <h3 class="card-title">{{ server.name }}</h3>
+                  <span class="chip-type" :class="server.type">{{ typeLabel(server.type) }}</span>
                 </div>
-                <p class="card-metrics">{{ serverSummary(server) }}</p>
-                <p v-if="server.website" class="card-link">
-                  <a :href="server.website" target="_blank" rel="noreferrer">{{ server.website }}</a>
-                </p>
-                <p v-if="server.tips" class="card-tip">{{ server.tips }}</p>
-              </div>
-            </div>
-            <div class="card-platforms">
-              <div v-for="option in platformOptions" :key="option.id" class="platform-row">
-                <div class="platform-info">
-                  <span class="platform-label">{{ option.label }}</span>
-                  <div class="platform-controls">
-                    <span
-                      class="platform-status"
-                      :class="{ active: platformActive(server, option.id) }"
-                    >
-                      {{ platformActive(server, option.id) ? t('components.mcp.status.active') : t('components.mcp.status.inactive') }}
-                    </span>
-                    <label class="mac-switch sm">
-                      <input
-                        type="checkbox"
-                        :checked="platformEnabled(server, option.id)"
-                        :disabled="saveBusy"
-                        @change="onPlatformToggle(server, option.id, $event)"
-                      />
-                      <span></span>
-                    </label>
-                  </div>
+                <div class="mcp-meta">
+                  <span class="meta-item" :title="server.type === 'http' ? server.url : server.command">
+                    {{ server.type === 'http' ? server.url : server.command }}
+                  </span>
                 </div>
               </div>
             </div>
+
+            <div class="mcp-platforms">
+              <div class="platform-toggle" v-for="option in platformOptions" :key="option.id">
+                <span class="platform-icon-label">{{ option.id === 'claude-code' ? 'Claude' : 'Codex' }}</span>
+                <label class="mac-switch sm">
+                  <input type="checkbox" :checked="platformEnabled(server, option.id)" :disabled="saveBusy"
+                    @change="onPlatformToggle(server, option.id, $event)" />
+                  <span></span>
+                </label>
+              </div>
+            </div>
+
             <div class="card-actions">
-              <button class="ghost-icon" :aria-label="t('components.mcp.list.edit')" @click="openEditModal(server)">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M4 21v-3.5L15.5 6.5a2 2 0 012.83 0l.67.67a2 2 0 010 2.83L7.5 21H4z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-              <button class="ghost-icon" :aria-label="t('components.mcp.list.delete')" @click="requestDelete(server)">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
             </div>
           </article>
         </div>
       </section>
     </div>
 
-    <BaseModal
-      :open="modalState.open"
+    <BaseModal :open="modalState.open"
       :title="modalState.editingName ? t('components.mcp.form.editTitle') : t('components.mcp.form.createTitle')"
-      @close="closeModal"
-    >
+      @close="closeModal">
       <!-- Tab 切换（仅新建时显示） -->
       <div v-if="!modalState.editingName" class="modal-tabs">
-        <button
-          type="button"
-          class="modal-tab"
-          :class="{ active: modalMode === 'form' }"
-          @click="switchModalMode('form')"
-        >
+        <button type="button" class="modal-tab" :class="{ active: modalMode === 'form' }"
+          @click="switchModalMode('form')">
           {{ t('components.mcp.jsonImport.tabForm') }}
         </button>
-        <button
-          type="button"
-          class="modal-tab"
-          :class="{ active: modalMode === 'json' }"
-          @click="switchModalMode('json')"
-        >
+        <button type="button" class="modal-tab" :class="{ active: modalMode === 'json' }"
+          @click="switchModalMode('json')">
           {{ t('components.mcp.jsonImport.tabJson') }}
         </button>
       </div>
 
       <div class="modal-scroll">
-      <!-- 表单模式 -->
-      <form v-if="modalMode === 'form' || modalState.editingName" class="vendor-form" @submit.prevent="submitModal">
-        <div class="form-row">
-          <label class="form-field">
-            <span>{{ t('components.mcp.form.name') }}</span>
-            <BaseInput v-model="modalState.form.name" type="text" :disabled="saveBusy" />
-          </label>
-          <label class="form-field">
-            <span>{{ t('components.mcp.form.website') }}</span>
-            <BaseInput v-model="modalState.form.website" type="text" :disabled="saveBusy" placeholder="https://example.com" />
-          </label>
-        </div>
-        <label class="form-field">
-          <span>{{ t('components.mcp.form.type') }}</span>
-          <select v-model="modalState.form.type" :disabled="saveBusy" class="base-input">
-            <option value="stdio">{{ t('components.mcp.types.stdio') }}</option>
-            <option value="http">{{ t('components.mcp.types.http') }}</option>
-          </select>
-        </label>
-        <label v-if="modalState.form.type === 'stdio'" class="form-field">
-          <span>{{ t('components.mcp.form.command') }}</span>
-          <BaseInput v-model="modalState.form.command" type="text" :disabled="saveBusy" />
-        </label>
-        <label v-if="modalState.form.type === 'stdio'" class="form-field">
-          <span>{{ t('components.mcp.form.args') }}</span>
-          <BaseTextarea
-            v-model="modalState.form.argsText"
-            :placeholder="t('components.mcp.form.argsHint')"
-            :disabled="saveBusy"
-            rows="5"
-          />
-        </label>
-        <label v-if="modalState.form.type === 'http'" class="form-field">
-          <span>{{ t('components.mcp.form.url') }}</span>
-          <BaseInput v-model="modalState.form.url" type="text" :disabled="saveBusy" />
-        </label>
-        <label class="form-field">
-          <span>{{ t('components.mcp.form.tips') }}</span>
-          <BaseTextarea
-            v-model="modalState.form.tips"
-            :placeholder="t('components.mcp.form.tipsHint')"
-            :disabled="saveBusy"
-            rows="4"
-          />
-        </label>
-        <div class="form-field">
-          <span>{{ t('components.mcp.form.env') }}</span>
-          <div class="env-table">
-            <div v-for="entry in modalState.form.envEntries" :key="entry.id" class="env-row">
-              <BaseInput v-model="entry.key" :placeholder="t('components.mcp.form.envKey')" :disabled="saveBusy" />
-              <BaseInput v-model="entry.value" :placeholder="t('components.mcp.form.envValue')" :disabled="saveBusy" />
-              <button
-                class="ghost-icon"
-                type="button"
-                :aria-label="t('components.mcp.form.envRemove')"
-                :disabled="modalState.form.envEntries.length === 1 || saveBusy"
-                @click="removeEnvEntry(entry.id)"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          <BaseButton variant="outline" type="button" class="env-add" :disabled="saveBusy" @click="addEnvEntry()">
-            {{ t('components.mcp.form.envAdd') }}
-          </BaseButton>
-        </div>
-        <div class="form-field">
-          <span>{{ t('components.mcp.form.platforms.title') }}</span>
-          <div class="platform-checkboxes">
-            <label v-for="option in platformOptions" :key="option.id" class="platform-checkbox">
-              <input
-                type="checkbox"
-                :checked="modalState.form.enablePlatform.includes(option.id)"
-                :disabled="saveBusy"
-                @change="onModalPlatformToggle(option.id, $event)"
-              />
-              <span>{{ option.label }}</span>
+        <!-- 表单模式 -->
+        <form v-if="modalMode === 'form' || modalState.editingName" class="vendor-form" @submit.prevent="submitModal">
+          <div class="form-row">
+            <label class="form-field">
+              <span>{{ t('components.mcp.form.name') }}</span>
+              <BaseInput v-model="modalState.form.name" type="text" :disabled="saveBusy" />
+            </label>
+            <label class="form-field">
+              <span>{{ t('components.mcp.form.website') }}</span>
+              <BaseInput v-model="modalState.form.website" type="text" :disabled="saveBusy"
+                placeholder="https://example.com" />
             </label>
           </div>
-        </div>
-
-        <p v-if="modalError" class="alert-error">{{ modalError }}</p>
-
-        <footer class="form-actions">
-          <BaseButton variant="outline" type="button" :disabled="saveBusy" @click="closeModal">
-            {{ t('components.mcp.form.actions.cancel') }}
-          </BaseButton>
-          <BaseButton :disabled="saveBusy" type="submit">
-            {{ t('components.mcp.form.actions.save') }}
-          </BaseButton>
-        </footer>
-      </form>
-
-      <!-- JSON 导入模式 -->
-      <div v-else-if="modalMode === 'json'" class="json-import-section">
-        <!-- JSON 输入区 -->
-        <div v-if="!jsonParseResult" class="json-input-area">
           <label class="form-field">
-            <span>{{ t('components.mcp.jsonImport.inputLabel') }}</span>
-            <BaseTextarea
-              v-model="jsonInput"
-              :placeholder="t('components.mcp.jsonImport.inputPlaceholder')"
-              :disabled="jsonParsing"
-              rows="10"
-              class="json-textarea"
-            />
+            <span>{{ t('components.mcp.form.type') }}</span>
+            <select v-model="modalState.form.type" :disabled="saveBusy" class="base-input">
+              <option value="stdio">{{ t('components.mcp.types.stdio') }}</option>
+              <option value="http">{{ t('components.mcp.types.http') }}</option>
+            </select>
           </label>
-          <p v-if="jsonError" class="alert-error">{{ jsonError }}</p>
-          <p class="json-hint">{{ t('components.mcp.jsonImport.formatHint') }}</p>
-          <footer class="form-actions">
-            <BaseButton variant="outline" type="button" :disabled="jsonParsing" @click="closeModal">
-              {{ t('components.mcp.form.actions.cancel') }}
-            </BaseButton>
-            <BaseButton :disabled="jsonParsing || !jsonInput.trim()" @click="handleParseJSON">
-              {{ jsonParsing ? t('components.mcp.jsonImport.parsing') : t('components.mcp.jsonImport.parse') }}
-            </BaseButton>
-          </footer>
-        </div>
-
-        <!-- 解析结果预览 -->
-        <div v-else class="json-preview-area">
-          <div class="preview-header">
-            <span class="preview-count">{{ t('components.mcp.jsonImport.serverCount', { count: jsonParseResult.servers.length }) }}</span>
-            <button type="button" class="ghost-icon sm" @click="resetJsonImport" :title="t('components.mcp.jsonImport.reset')">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- 冲突警告 -->
-          <div v-if="jsonParseResult.conflicts.length > 0" class="conflict-warning">
-            <p>{{ t('components.mcp.jsonImport.conflictWarning', { names: jsonParseResult.conflicts.join(', ') }) }}</p>
-            <div class="conflict-actions">
-              <BaseButton variant="outline" size="sm" @click="handleBatchImport('skip')">
-                {{ t('components.mcp.jsonImport.conflictSkip') }}
-              </BaseButton>
-              <BaseButton variant="outline" size="sm" @click="handleBatchImport('overwrite')">
-                {{ t('components.mcp.jsonImport.conflictOverwrite') }}
-              </BaseButton>
-              <BaseButton variant="outline" size="sm" @click="handleBatchImport('rename')">
-                {{ t('components.mcp.jsonImport.conflictRename') }}
-              </BaseButton>
-            </div>
-          </div>
-
-          <!-- 服务器列表预览 -->
-          <div class="preview-list">
-            <div v-for="server in jsonParseResult.servers" :key="server.name" class="preview-item">
-              <div class="preview-item-header">
-                <span class="preview-item-name">{{ server.name || t('components.mcp.jsonImport.unnamed') }}</span>
-                <span class="preview-item-type">{{ server.type }}</span>
+          <label v-if="modalState.form.type === 'stdio'" class="form-field">
+            <span>{{ t('components.mcp.form.command') }}</span>
+            <BaseInput v-model="modalState.form.command" type="text" :disabled="saveBusy" />
+          </label>
+          <label v-if="modalState.form.type === 'stdio'" class="form-field">
+            <span>{{ t('components.mcp.form.args') }}</span>
+            <BaseTextarea v-model="modalState.form.argsText" :placeholder="t('components.mcp.form.argsHint')"
+              :disabled="saveBusy" rows="5" />
+          </label>
+          <label v-if="modalState.form.type === 'http'" class="form-field">
+            <span>{{ t('components.mcp.form.url') }}</span>
+            <BaseInput v-model="modalState.form.url" type="text" :disabled="saveBusy" />
+          </label>
+          <label class="form-field">
+            <span>{{ t('components.mcp.form.tips') }}</span>
+            <BaseTextarea v-model="modalState.form.tips" :placeholder="t('components.mcp.form.tipsHint')"
+              :disabled="saveBusy" rows="4" />
+          </label>
+          <div class="form-field">
+            <span>{{ t('components.mcp.form.env') }}</span>
+            <div class="env-table">
+              <div v-for="entry in modalState.form.envEntries" :key="entry.id" class="env-row">
+                <BaseInput v-model="entry.key" :placeholder="t('components.mcp.form.envKey')" :disabled="saveBusy" />
+                <BaseInput v-model="entry.value" :placeholder="t('components.mcp.form.envValue')"
+                  :disabled="saveBusy" />
+                <button class="ghost-icon" type="button" :aria-label="t('components.mcp.form.envRemove')"
+                  :disabled="modalState.form.envEntries.length === 1 || saveBusy" @click="removeEnvEntry(entry.id)">
+                  ✕
+                </button>
               </div>
-              <p class="preview-item-detail">
-                {{ server.type === 'http' ? server.url : server.command }}
-              </p>
+            </div>
+            <BaseButton variant="outline" type="button" class="env-add" :disabled="saveBusy" @click="addEnvEntry()">
+              {{ t('components.mcp.form.envAdd') }}
+            </BaseButton>
+          </div>
+          <div class="form-field">
+            <span>{{ t('components.mcp.form.platforms.title') }}</span>
+            <div class="platform-checkboxes">
+              <label v-for="option in platformOptions" :key="option.id" class="platform-checkbox">
+                <input type="checkbox" :checked="modalState.form.enablePlatform.includes(option.id)"
+                  :disabled="saveBusy" @change="onModalPlatformToggle(option.id, $event)" />
+                <span>{{ option.label }}</span>
+              </label>
             </div>
           </div>
 
+          <p v-if="modalError" class="alert-error">{{ modalError }}</p>
+
           <footer class="form-actions">
-            <BaseButton variant="outline" type="button" @click="closeModal">
+            <BaseButton variant="outline" type="button" :disabled="saveBusy" @click="closeModal">
               {{ t('components.mcp.form.actions.cancel') }}
             </BaseButton>
-            <BaseButton
-              v-if="jsonParseResult.conflicts.length === 0"
-              :disabled="saveBusy"
-              @click="handleBatchImport('skip')"
-            >
-              {{ t('components.mcp.jsonImport.importAll') }}
+            <BaseButton :disabled="saveBusy" type="submit">
+              {{ t('components.mcp.form.actions.save') }}
             </BaseButton>
           </footer>
+        </form>
+
+        <!-- JSON 导入模式 -->
+        <div v-else-if="modalMode === 'json'" class="json-import-section">
+          <!-- JSON 输入区 -->
+          <div v-if="!jsonParseResult" class="json-input-area">
+            <label class="form-field">
+              <span>{{ t('components.mcp.jsonImport.inputLabel') }}</span>
+              <BaseTextarea v-model="jsonInput" :placeholder="t('components.mcp.jsonImport.inputPlaceholder')"
+                :disabled="jsonParsing" rows="10" class="json-textarea" />
+            </label>
+            <p v-if="jsonError" class="alert-error">{{ jsonError }}</p>
+            <p class="json-hint">{{ t('components.mcp.jsonImport.formatHint') }}</p>
+            <footer class="form-actions">
+              <BaseButton variant="outline" type="button" :disabled="jsonParsing" @click="closeModal">
+                {{ t('components.mcp.form.actions.cancel') }}
+              </BaseButton>
+              <BaseButton :disabled="jsonParsing || !jsonInput.trim()" @click="handleParseJSON">
+                {{ jsonParsing ? t('components.mcp.jsonImport.parsing') : t('components.mcp.jsonImport.parse') }}
+              </BaseButton>
+            </footer>
+          </div>
+
+          <!-- 解析结果预览 -->
+          <div v-else class="json-preview-area">
+            <div class="preview-header">
+              <span class="preview-count">{{ t('components.mcp.jsonImport.serverCount', {
+                count:
+                  jsonParseResult.servers.length }) }}</span>
+              <button type="button" class="ghost-icon sm" @click="resetJsonImport"
+                :title="t('components.mcp.jsonImport.reset')">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    fill="none" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- 冲突警告 -->
+            <div v-if="jsonParseResult.conflicts.length > 0" class="conflict-warning">
+              <p>{{ t('components.mcp.jsonImport.conflictWarning', { names: jsonParseResult.conflicts.join(', ') }) }}
+              </p>
+              <div class="conflict-actions">
+                <BaseButton variant="outline" size="sm" @click="handleBatchImport('skip')">
+                  {{ t('components.mcp.jsonImport.conflictSkip') }}
+                </BaseButton>
+                <BaseButton variant="outline" size="sm" @click="handleBatchImport('overwrite')">
+                  {{ t('components.mcp.jsonImport.conflictOverwrite') }}
+                </BaseButton>
+                <BaseButton variant="outline" size="sm" @click="handleBatchImport('rename')">
+                  {{ t('components.mcp.jsonImport.conflictRename') }}
+                </BaseButton>
+              </div>
+            </div>
+
+            <!-- 服务器列表预览 -->
+            <div class="preview-list">
+              <div v-for="server in jsonParseResult.servers" :key="server.name" class="preview-item">
+                <div class="preview-item-header">
+                  <span class="preview-item-name">{{ server.name || t('components.mcp.jsonImport.unnamed') }}</span>
+                  <span class="preview-item-type">{{ server.type }}</span>
+                </div>
+                <p class="preview-item-detail">
+                  {{ server.type === 'http' ? server.url : server.command }}
+                </p>
+              </div>
+            </div>
+
+            <footer class="form-actions">
+              <BaseButton variant="outline" type="button" @click="closeModal">
+                {{ t('components.mcp.form.actions.cancel') }}
+              </BaseButton>
+              <BaseButton v-if="jsonParseResult.conflicts.length === 0" :disabled="saveBusy"
+                @click="handleBatchImport('skip')">
+                {{ t('components.mcp.jsonImport.importAll') }}
+              </BaseButton>
+            </footer>
+          </div>
         </div>
-      </div>
       </div>
     </BaseModal>
 
-    <BaseModal
-      :open="confirmState.open"
-      :title="t('components.mcp.form.deleteTitle')"
-      variant="confirm"
-      @close="closeConfirm"
-    >
+    <BaseModal :open="confirmState.open" :title="t('components.mcp.form.deleteTitle')" variant="confirm"
+      @close="closeConfirm">
       <div class="confirm-body">
         <p>
           {{ t('components.mcp.form.deleteMessage', { name: confirmState.target?.name ?? '' }) }}
@@ -1219,5 +1115,98 @@ onMounted(() => {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   word-break: break-all;
+}
+
+.mcp-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+}
+
+.mcp-info-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1; /* 占据剩余空间 */
+  min-width: 0;
+}
+
+.mcp-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.mcp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip-type {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.chip-type.stdio { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.chip-type.http { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+
+.mcp-meta {
+  font-size: 12px;
+  color: var(--mac-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'SF Mono', monospace;
+}
+
+/* 核心优化：中间的平台开关组 */
+.mcp-platforms {
+  display: flex;
+  gap: 24px; /* 开关组之间的间距 */
+  padding: 0 32px;
+  border-left: 1px solid var(--mac-border);
+  border-right: 1px solid var(--mac-border);
+  margin: 0 24px;
+}
+
+.platform-toggle {
+  display: flex;
+  flex-direction: column; /* 上下排列：文字在上，开关在下，或者反过来 */
+  align-items: center;
+  gap: 6px;
+}
+
+.platform-icon-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+  text-transform: uppercase;
+}
+
+/* 响应式调整 */
+@media (max-width: 800px) {
+  .mcp-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .mcp-platforms {
+    border: none;
+    border-top: 1px solid var(--mac-border);
+    padding: 16px 0 0;
+    margin: 0;
+    justify-content: space-around;
+  }
+  .card-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
 }
 </style>

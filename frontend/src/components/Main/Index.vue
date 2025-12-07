@@ -1,27 +1,14 @@
 <template>
-  <PageLayout
-    :eyebrow="t('components.main.hero.eyebrow')"
-    :sticky="true"
-  >
+  <PageLayout :eyebrow="t('components.main.hero.eyebrow')" :sticky="true">
     <template #actions>
-      <button
-        class="ghost-icon github-icon"
-        :class="{
-          'github-upgrade': hasUpdateAvailable && !updateReady,
-          'update-ready': updateReady
-        }"
-        :data-tooltip="getGithubTooltip()"
-        @click="handleGithubClick"
-      >
+      <button class="ghost-icon github-icon" :class="{
+        'github-upgrade': hasUpdateAvailable && !updateReady,
+        'update-ready': updateReady
+      }" :data-tooltip="getGithubTooltip()" @click="handleGithubClick">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M9 19c-4.5 1.5-4.5-2.5-6-3m12 5v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0018 3.77 5.07 5.07 0 0017.91 1S16.73.65 14 2.48a13.38 13.38 0 00-5 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 3.77a5.44 5.44 0 00-1.5 3.76c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
+            fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <!-- 更新徽章 -->
         <span v-if="updateReady" class="update-badge pulse">Ready</span>
@@ -30,87 +17,36 @@
         </span>
         <span v-else-if="hasUpdateAvailable" class="update-badge">New</span>
       </button>
-      <button
-        class="ghost-icon"
-        :data-tooltip="t('components.main.controls.theme')"
-        @click="toggleTheme"
-      >
+      <button class="ghost-icon" :data-tooltip="t('components.main.controls.theme')" @click="toggleTheme">
         <svg v-if="themeIcon === 'sun'" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5" fill="none" />
           <path
             d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m12.9 0-1.41 1.41M7.46 16.54l-1.41 1.41"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          />
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
         <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
+          <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
-      <button
-        v-if="showImportButton"
-        class="ghost-icon"
-        :data-tooltip="importButtonTooltip"
-        :disabled="importBusy"
-        @click="handleImportClick"
-      >
+      <button v-if="showImportButton" class="ghost-icon" :data-tooltip="importButtonTooltip" :disabled="importBusy"
+        @click="handleImportClick">
         <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ rotating: importBusy }">
-          <path
-            d="M12 4v9"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-          <path
-            d="M8.5 10.5l3.5 3.5 3.5-3.5"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-          <path
-            d="M5 19h14"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
+          <path d="M12 4v9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+            fill="none" />
+          <path d="M8.5 10.5l3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" fill="none" />
+          <path d="M5 19h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+            fill="none" />
         </svg>
       </button>
-      <button
-        class="ghost-icon"
-        :data-tooltip="t('components.main.controls.settings')"
-        @click="goToSettings"
-      >
+      <button class="ghost-icon" :data-tooltip="t('components.main.controls.settings')" @click="goToSettings">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
+          <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" fill="none" />
           <path
             d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
       </button>
     </template>
@@ -131,19 +67,15 @@
           </button>
         </div>
       </div>
-      <section class="contrib-hero">
+      <!-- <section class="contrib-hero">
         <h1 v-if="showHomeTitle">{{ t('components.main.hero.title') }}</h1>
-        <!-- <p class="lead">
+        <p class="lead">
           {{ t('components.main.hero.lead') }}
-        </p> -->
-      </section>
+        </p>
+      </section> -->
 
-      <section
-        v-if="showHeatmap"
-        ref="heatmapContainerRef"
-        class="contrib-wall"
-        :aria-label="t('components.main.heatmap.ariaLabel')"
-      >
+      <section v-if="showHeatmap" ref="heatmapContainerRef" class="contrib-wall"
+        :aria-label="t('components.main.heatmap.ariaLabel')">
         <div class="contrib-legend">
           <span>{{ t('components.main.heatmap.legendLow') }}</span>
           <span v-for="level in 5" :key="level" :class="['legend-box', intensityClass(level - 1)]" />
@@ -151,29 +83,14 @@
         </div>
 
         <div class="contrib-grid">
-          <div
-            v-for="(week, weekIndex) in usageHeatmap"
-            :key="weekIndex"
-            class="contrib-column"
-          >
-            <div
-              v-for="(day, dayIndex) in week"
-              :key="dayIndex"
-              class="contrib-cell"
-              :class="intensityClass(day.intensity)"
-              @mouseenter="showUsageTooltip(day, $event)"
-              @mousemove="showUsageTooltip(day, $event)"
-              @mouseleave="hideUsageTooltip"
-            />
+          <div v-for="(week, weekIndex) in usageHeatmap" :key="weekIndex" class="contrib-column">
+            <div v-for="(day, dayIndex) in week" :key="dayIndex" class="contrib-cell"
+              :class="intensityClass(day.intensity)" @mouseenter="showUsageTooltip(day, $event)"
+              @mousemove="showUsageTooltip(day, $event)" @mouseleave="hideUsageTooltip" />
           </div>
         </div>
-        <div
-          v-if="usageTooltip.visible"
-          ref="tooltipRef"
-          class="contrib-tooltip"
-          :class="usageTooltip.placement"
-          :style="{ left: `${usageTooltip.left}px`, top: `${usageTooltip.top}px` }"
-        >
+        <div v-if="usageTooltip.visible" ref="tooltipRef" class="contrib-tooltip" :class="usageTooltip.placement"
+          :style="{ left: `${usageTooltip.left}px`, top: `${usageTooltip.top}px` }">
           <p class="tooltip-heading">{{ formattedTooltipLabel }}</p>
           <ul class="tooltip-metrics">
             <li v-for="metric in usageTooltipMetrics" :key="metric.key">
@@ -185,426 +102,347 @@
       </section>
 
       <section class="automation-section">
-      <div class="section-header">
-        <div class="tab-group" role="tablist" :aria-label="t('components.main.tabs.ariaLabel')">
-          <button
-            v-for="(tab, idx) in tabs"
-            :key="tab.id"
-            class="tab-pill"
-            :class="{ active: selectedIndex === idx }"
-            role="tab"
-            :aria-selected="selectedIndex === idx"
-            type="button"
-            @click="onTabChange(idx)"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-        <div class="section-controls">
-          <div class="relay-toggle" :aria-label="currentProxyLabel">
-            <div class="relay-switch">
-              <label class="mac-switch sm">
-                <input
-                  type="checkbox"
-                  :checked="activeProxyState"
-                  :disabled="activeProxyBusy"
-                  @change="onProxyToggle"
-                />
-                <span></span>
-              </label>
-              <span class="relay-tooltip-content">{{ currentProxyLabel }} · {{ t('components.main.relayToggle.tooltip') }}</span>
+        <div class="section-header">
+          <div class="tab-group-container">
+            <div class="tab-group" role="tablist">
+              <button v-for="(tab, idx) in tabs" :key="tab.id" class="tab-pill"
+                :class="{ active: selectedIndex === idx }" role="tab" :aria-selected="selectedIndex === idx"
+                type="button" @click="onTabChange(idx)">
+                {{ tab.label }}
+              </button>
             </div>
           </div>
-          <button
-            class="ghost-icon"
-            :data-tooltip="t('components.main.tabs.addCard')"
-            @click="openCreateModal"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 5v14M5 12h14"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                fill="none"
-              />
-            </svg>
-          </button>
-          <button
-            class="ghost-icon"
-            :class="{ 'rotating': refreshing }"
-            :data-tooltip="t('components.main.tabs.refresh')"
-            @click="refreshAllData"
-            :disabled="refreshing"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                fill="none"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="automation-list" @dragover.prevent>
-        <article
-          v-for="card in activeCards"
-          :key="card.id"
-          :class="['automation-card', { dragging: draggingId === card.id }]"
-          draggable="true"
-          @dragstart="onDragStart(card.id)"
-          @dragend="onDragEnd"
-          @drop="onDrop(card.id)"
-        >
-          <div class="card-leading">
-            <div class="card-icon" :style="{ backgroundColor: card.tint, color: card.accent }">
-              <span
-                v-if="!iconSvg(card.icon)"
-                class="icon-fallback"
-              >
-                {{ vendorInitials(card.name) }}
-              </span>
-              <span
-                v-else
-                class="icon-svg"
-                v-html="iconSvg(card.icon)"
-                aria-hidden="true"
-              ></span>
+
+          <div class="section-controls">
+            <div class="proxy-status-pill" :class="{ active: activeProxyState }">
+              <span class="status-dot"></span>
+              <span class="status-text">{{ activeProxyState ? 'Relay On' : 'Relay Off' }}</span>
+              <label class="mac-switch sm">
+                <input type="checkbox" :checked="activeProxyState" :disabled="activeProxyBusy"
+                  @change="onProxyToggle" />
+                <span></span>
+              </label>
             </div>
-            <div class="card-text">
-              <div class="card-title-row">
-                <p class="card-title">{{ card.name }}</p>
-                <span v-if="card.level" class="level-badge scheduling-level" :class="`level-${card.level}`">
-                  L{{ card.level }}
+
+            <div class="divider-vertical"></div>
+
+            <button class="ghost-icon" :data-tooltip="t('components.main.tabs.addCard')" @click="openCreateModal">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" fill="none" />
+              </svg>
+            </button>
+
+            <button class="ghost-icon" :class="{ 'rotating': refreshing }"
+              :data-tooltip="t('components.main.tabs.refresh')" @click="refreshAllData" :disabled="refreshing">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <!-- <div class="section-header">
+          <div class="tab-group-container">
+            <div class="tab-group" role="tablist" :aria-label="t('components.main.tabs.ariaLabel')">
+              
+            </div>
+          </div>
+          <div class="section-controls">
+            <div class="relay-toggle" :aria-label="currentProxyLabel">
+              <div class="relay-switch">
+                <label class="mac-switch sm">
+                  <input type="checkbox" :checked="activeProxyState" :disabled="activeProxyBusy"
+                    @change="onProxyToggle" />
+                  <span></span>
+                </label>
+                <span class="relay-tooltip-content">{{ currentProxyLabel }} · {{
+                  t('components.main.relayToggle.tooltip')
+                }}</span>
+              </div>
+            </div>
+            <button class="ghost-icon" :data-tooltip="t('components.main.tabs.addCard')" @click="openCreateModal">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" fill="none" />
+              </svg>
+            </button>
+            <button class="ghost-icon" :class="{ 'rotating': refreshing }"
+              :data-tooltip="t('components.main.tabs.refresh')" @click="refreshAllData" :disabled="refreshing">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"
+                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              </svg>
+            </button>
+          </div>
+        </div> -->
+        <div class="automation-list" @dragover.prevent>
+          <article v-for="card in activeCards" :key="card.id"
+            :class="['automation-card', { dragging: draggingId === card.id }]" draggable="true"
+            @dragstart="onDragStart(card.id)" @dragend="onDragEnd" @drop="onDrop(card.id)">
+            <div class="card-leading">
+              <div class="card-icon" :style="{ backgroundColor: card.tint, color: card.accent }">
+                <span v-if="!iconSvg(card.icon)" class="icon-fallback">
+                  {{ vendorInitials(card.name) }}
                 </span>
-                <!-- 黑名单等级徽章（始终显示，包括 L0） -->
-                <span
-                  v-if="getProviderBlacklistStatus(card.name)"
-                  :class="[
+                <span v-else class="icon-svg" v-html="iconSvg(card.icon)" aria-hidden="true"></span>
+              </div>
+              <div class="card-text">
+                <div class="card-title-row">
+                  <p class="card-title">{{ card.name }}</p>
+                  <span v-if="card.level" class="level-badge scheduling-level" :class="`level-${card.level}`">
+                    L{{ card.level }}
+                  </span>
+                  <!-- 黑名单等级徽章（始终显示，包括 L0） -->
+                  <span v-if="getProviderBlacklistStatus(card.name)" :class="[
                     'blacklist-level-badge',
                     `bl-level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`,
                     { dark: resolvedTheme === 'dark' }
                   ]"
-                  :title="t('components.main.blacklist.levelTitle', { level: getProviderBlacklistStatus(card.name)!.blacklistLevel })"
-                >
-                  BL{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                </span>
-                <button
-                  v-if="card.officialSite"
-                  class="card-site"
-                  type="button"
-                  @click.stop="openOfficialSite(card.officialSite)"
-                >
-                  {{ formatOfficialSite(card.officialSite) }}
-                </button>
-              </div>
-              <!-- <p class="card-subtitle">{{ card.apiUrl }}</p> -->
-              <p
-                v-for="stats in [providerStatDisplay(card.name)]"
-                :key="`metrics-${card.id}`"
-                class="card-metrics"
-              >
-                <template v-if="stats.state !== 'ready'">
-                  {{ stats.message }}
-                </template>
-                <template v-else>
-                  <span
-                    v-if="stats.successRateLabel"
-                    class="card-success-rate"
-                    :class="stats.successRateClass"
-                  >
-                    {{ stats.successRateLabel }}
+                    :title="t('components.main.blacklist.levelTitle', { level: getProviderBlacklistStatus(card.name)!.blacklistLevel })">
+                    BL{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
                   </span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span >{{ stats.requests }}</span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span>{{ stats.tokens }}</span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span>{{ stats.cost }}</span>
-                </template>
-              </p>
-              <!-- 黑名单横幅 -->
-              <div
-                v-if="getProviderBlacklistStatus(card.name)?.isBlacklisted"
-                :class="['blacklist-banner', { dark: resolvedTheme === 'dark' }]"
-              >
-                <div class="blacklist-info">
-                  <span class="blacklist-icon">⛔</span>
-                  <!-- 等级徽章（L1-L5，黑色/红色） -->
-                  <span
-                    v-if="getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
-                    :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
-                  >
-                    L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                  </span>
-                  <span class="blacklist-text">
-                    {{ t('components.main.blacklist.blocked') }} |
-                    {{ t('components.main.blacklist.remaining') }}:
-                    {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
-                  </span>
-                </div>
-                <div class="blacklist-actions">
-                  <button
-                    class="unblock-btn primary"
-                    type="button"
-                    @click.stop="handleUnblockAndReset(card.name)"
-                    :title="t('components.main.blacklist.unblockAndResetHint')"
-                  >
-                    {{ t('components.main.blacklist.unblockAndReset') }}
-                  </button>
-                  <button
-                    class="unblock-btn secondary"
-                    type="button"
-                    @click.stop="handleResetLevel(card.name)"
-                    :title="t('components.main.blacklist.resetLevelHint')"
-                  >
-                    {{ t('components.main.blacklist.resetLevel') }}
+                  <button v-if="card.officialSite" class="card-site" type="button"
+                    @click.stop="openOfficialSite(card.officialSite)">
+                    {{ formatOfficialSite(card.officialSite) }}
                   </button>
                 </div>
-              </div>
-              <!-- 等级徽章（未拉黑但有等级） -->
-              <div
-                v-else-if="getProviderBlacklistStatus(card.name) && getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
-                class="level-badge-standalone"
-              >
-                <span
-                  :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
-                >
-                  L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                </span>
-                <span class="level-hint">{{ t('components.main.blacklist.levelHint') }}</span>
-                <button
-                  class="reset-level-mini"
-                  type="button"
-                  @click.stop="handleResetLevel(card.name)"
-                  :title="t('components.main.blacklist.resetLevelHint')"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="card-actions">
-            <label class="mac-switch sm">
-              <input type="checkbox" v-model="card.enabled" @change="persistProviders(activeTab)" />
-              <span></span>
-            </label>
-            <button class="ghost-icon" @click="configure(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M11.983 2.25a1.125 1.125 0 011.077.81l.563 2.101a7.482 7.482 0 012.326 1.343l2.08-.621a1.125 1.125 0 011.356.651l1.313 3.207a1.125 1.125 0 01-.442 1.339l-1.86 1.205a7.418 7.418 0 010 2.686l1.86 1.205a1.125 1.125 0 01.442 1.339l-1.313 3.207a1.125 1.125 0 01-1.356.651l-2.08-.621a7.482 7.482 0 01-2.326 1.343l-.563 2.101a1.125 1.125 0 01-1.077.81h-2.634a1.125 1.125 0 01-1.077-.81l-.563-2.101a7.482 7.482 0 01-2.326-1.343l-2.08.621a1.125 1.125 0 01-1.356-.651l-1.313-3.207a1.125 1.125 0 01.442-1.339l1.86-1.205a7.418 7.418 0 010-2.686l-1.86-1.205a1.125 1.125 0 01-.442-1.339l1.313-3.207a1.125 1.125 0 011.356-.651l2.08.621a7.482 7.482 0 012.326-1.343l.563-2.101a1.125 1.125 0 011.077-.81h2.634z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-            <button class="ghost-icon" :data-tooltip="t('components.main.controls.duplicate')" @click="handleDuplicate(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <button class="ghost-icon" @click="requestRemove(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </article>
-      </div>
-      </section>
-
-      <BaseModal
-      :open="modalState.open"
-      :title="modalState.editingId ? t('components.main.form.editTitle') : t('components.main.form.createTitle')"
-      @close="closeModal"
-    >
-      <form class="vendor-form" @submit.prevent="submitModal">
-                <label class="form-field">
-                  <span>{{ t('components.main.form.labels.name') }}</span>
-                  <BaseInput
-                    v-model="modalState.form.name"
-                    type="text"
-                    :placeholder="t('components.main.form.placeholders.name')"
-                    required
-                    :disabled="Boolean(modalState.editingId)"
-                  />
-                </label>
-
-                <label class="form-field">
-                  <span class="label-row">
-                    {{ t('components.main.form.labels.apiUrl') }}
-                    <span v-if="modalState.errors.apiUrl" class="field-error">
-                      {{ modalState.errors.apiUrl }}
+                <!-- <p class="card-subtitle">{{ card.apiUrl }}</p> -->
+                <p v-for="stats in [providerStatDisplay(card.name)]" :key="`metrics-${card.id}`" class="card-metrics">
+                  <template v-if="stats.state !== 'ready'">
+                    {{ stats.message }}
+                  </template>
+                  <template v-else>
+                    <span v-if="stats.successRateLabel" class="card-success-rate" :class="stats.successRateClass">
+                      {{ stats.successRateLabel }}
                     </span>
-                  </span>
-                  <BaseInput
-                    v-model="modalState.form.apiUrl"
-                    type="text"
-                    :placeholder="t('components.main.form.placeholders.apiUrl')"
-                    required
-                    :class="{ 'has-error': !!modalState.errors.apiUrl }"
-                  />
-                </label>
-
-                <label class="form-field">
-                  <span>{{ t('components.main.form.labels.officialSite') }}</span>
-                  <BaseInput
-                    v-model="modalState.form.officialSite"
-                    type="text"
-                    :placeholder="t('components.main.form.placeholders.officialSite')"
-                  />
-                </label>
-
-                <label class="form-field">
-                  <span>{{ t('components.main.form.labels.apiKey') }}</span>
-                  <BaseInput
-                    v-model="modalState.form.apiKey"
-                    type="text"
-                    :placeholder="t('components.main.form.placeholders.apiKey')"
-                  />
-                </label>
-
-                <div class="form-field">
-                  <span>{{ t('components.main.form.labels.icon') }}</span>
-                  <Listbox v-model="modalState.form.icon" v-slot="{ open }">
-                    <div class="icon-select">
-                      <ListboxButton class="icon-select-button">
-                        <span class="icon-preview" v-html="iconSvg(modalState.form.icon)" aria-hidden="true"></span>
-                        <span class="icon-select-label">{{ modalState.form.icon }}</span>
-                        <svg viewBox="0 0 20 20" aria-hidden="true">
-                          <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        </svg>
-                      </ListboxButton>
-                      <ListboxOptions v-if="open" class="icon-select-options">
-                        <ListboxOption
-                          v-for="iconName in iconOptions"
-                          :key="iconName"
-                          :value="iconName"
-                          v-slot="{ active, selected }"
-                        >
-                          <div :class="['icon-option', { active, selected }]">
-                            <span class="icon-preview" v-html="iconSvg(iconName)" aria-hidden="true"></span>
-                            <span class="icon-name">{{ iconName }}</span>
-                          </div>
-                        </ListboxOption>
-                      </ListboxOptions>
-                    </div>
-                  </Listbox>
-                </div>
-
-                <div class="form-field">
-                  <span>{{ t('components.main.form.labels.level') }}</span>
-                  <Listbox v-model="modalState.form.level" v-slot="{ open }">
-                    <div class="level-select">
-                      <ListboxButton class="level-select-button">
-                        <span class="level-badge" :class="`level-${modalState.form.level || 1}`">
-                          L{{ modalState.form.level || 1 }}
-                        </span>
-                        <span class="level-label">
-                          Level {{ modalState.form.level || 1 }} - {{ getLevelDescription(modalState.form.level || 1) }}
-                        </span>
-                        <svg viewBox="0 0 20 20" aria-hidden="true">
-                          <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        </svg>
-                      </ListboxButton>
-                      <ListboxOptions v-if="open" class="level-select-options">
-                        <ListboxOption
-                          v-for="lvl in 10"
-                          :key="lvl"
-                          :value="lvl"
-                          v-slot="{ active, selected }"
-                        >
-                          <div :class="['level-option', { active, selected }]">
-                            <span class="level-badge" :class="`level-${lvl}`">L{{ lvl }}</span>
-                            <span class="level-name">Level {{ lvl }} - {{ getLevelDescription(lvl) }}</span>
-                          </div>
-                        </ListboxOption>
-                      </ListboxOptions>
-                    </div>
-                  </Listbox>
-                  <span class="field-hint">{{ t('components.main.form.hints.level') }}</span>
-                </div>
-
-                <div class="form-field">
-                  <ModelWhitelistEditor v-model="modalState.form.supportedModels" />
-                </div>
-
-                <div class="form-field">
-                  <ModelMappingEditor v-model="modalState.form.modelMapping" />
-                </div>
-
-                <div class="form-field">
-                  <CLIConfigEditor
-                    :platform="activeTab as CLIPlatform"
-                    v-model="modalState.form.cliConfig"
-                  />
-                </div>
-
-                <div class="form-field switch-field">
-                  <span>{{ t('components.main.form.labels.enabled') }}</span>
-                  <div class="switch-inline">
-                    <label class="mac-switch">
-                      <input type="checkbox" v-model="modalState.form.enabled" />
-                      <span></span>
-                    </label>
-                    <span class="switch-text">
-                      {{ modalState.form.enabled ? t('components.main.form.switch.on') : t('components.main.form.switch.off') }}
+                    <span class="card-metric-separator" aria-hidden="true">·</span>
+                    <span>{{ stats.requests }}</span>
+                    <span class="card-metric-separator" aria-hidden="true">·</span>
+                    <span>{{ stats.tokens }}</span>
+                    <span class="card-metric-separator" aria-hidden="true">·</span>
+                    <span>{{ stats.cost }}</span>
+                  </template>
+                </p>
+                <!-- 黑名单横幅 -->
+                <div v-if="getProviderBlacklistStatus(card.name)?.isBlacklisted"
+                  :class="['blacklist-banner', { dark: resolvedTheme === 'dark' }]">
+                  <div class="blacklist-info">
+                    <span class="blacklist-icon">⛔</span>
+                    <!-- 等级徽章（L1-L5，黑色/红色） -->
+                    <span v-if="getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
+                      :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]">
+                      L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                    </span>
+                    <span class="blacklist-text">
+                      {{ t('components.main.blacklist.blocked') }} |
+                      {{ t('components.main.blacklist.remaining') }}:
+                      {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
                     </span>
                   </div>
+                  <div class="blacklist-actions">
+                    <button class="unblock-btn primary" type="button" @click.stop="handleUnblockAndReset(card.name)"
+                      :title="t('components.main.blacklist.unblockAndResetHint')">
+                      {{ t('components.main.blacklist.unblockAndReset') }}
+                    </button>
+                    <button class="unblock-btn secondary" type="button" @click.stop="handleResetLevel(card.name)"
+                      :title="t('components.main.blacklist.resetLevelHint')">
+                      {{ t('components.main.blacklist.resetLevel') }}
+                    </button>
+                  </div>
                 </div>
+                <!-- 等级徽章（未拉黑但有等级） -->
+                <div
+                  v-else-if="getProviderBlacklistStatus(card.name) && getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
+                  class="level-badge-standalone">
+                  <span
+                    :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]">
+                    L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                  </span>
+                  <span class="level-hint">{{ t('components.main.blacklist.levelHint') }}</span>
+                  <button class="reset-level-mini" type="button" @click.stop="handleResetLevel(card.name)"
+                    :title="t('components.main.blacklist.resetLevelHint')">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <label class="mac-switch sm">
+                <input type="checkbox" v-model="card.enabled" @change="persistProviders(activeTab)" />
+                <span></span>
+              </label>
+              <button class="ghost-icon" @click="configure(card)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M11.983 2.25a1.125 1.125 0 011.077.81l.563 2.101a7.482 7.482 0 012.326 1.343l2.08-.621a1.125 1.125 0 011.356.651l1.313 3.207a1.125 1.125 0 01-.442 1.339l-1.86 1.205a7.418 7.418 0 010 2.686l1.86 1.205a1.125 1.125 0 01.442 1.339l-1.313 3.207a1.125 1.125 0 01-1.356.651l-2.08-.621a7.482 7.482 0 01-2.326 1.343l-.563 2.101a1.125 1.125 0 01-1.077.81h-2.634a1.125 1.125 0 01-1.077-.81l-.563-2.101a7.482 7.482 0 01-2.326-1.343l-2.08.621a1.125 1.125 0 01-1.356-.651l-1.313-3.207a1.125 1.125 0 01.442-1.339l1.86-1.205a7.418 7.418 0 010-2.686l-1.86-1.205a1.125 1.125 0 01-.442-1.339l1.313-3.207a1.125 1.125 0 011.356-.651l2.08.621a7.482 7.482 0 012.326-1.343l.563-2.101a1.125 1.125 0 011.077-.81h2.634z"
+                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              <button class="ghost-icon" :data-tooltip="t('components.main.controls.duplicate')"
+                @click="handleDuplicate(card)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button class="ghost-icon" @click="requestRemove(card)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
+                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
 
-                <footer class="form-actions">
-                  <BaseButton variant="outline" type="button" @click="closeModal">
-                    {{ t('components.main.form.actions.cancel') }}
-                  </BaseButton>
-                  <BaseButton type="submit">
-                    {{ t('components.main.form.actions.save') }}
-                  </BaseButton>
-                </footer>
-      </form>
+      <BaseModal :open="modalState.open"
+        :title="modalState.editingId ? t('components.main.form.editTitle') : t('components.main.form.createTitle')"
+        @close="closeModal">
+        <form class="vendor-form" @submit.prevent="submitModal">
+          <label class="form-field">
+            <span>{{ t('components.main.form.labels.name') }}</span>
+            <BaseInput v-model="modalState.form.name" type="text"
+              :placeholder="t('components.main.form.placeholders.name')" required
+              :disabled="Boolean(modalState.editingId)" />
+          </label>
+
+          <label class="form-field">
+            <span class="label-row">
+              {{ t('components.main.form.labels.apiUrl') }}
+              <span v-if="modalState.errors.apiUrl" class="field-error">
+                {{ modalState.errors.apiUrl }}
+              </span>
+            </span>
+            <BaseInput v-model="modalState.form.apiUrl" type="text"
+              :placeholder="t('components.main.form.placeholders.apiUrl')" required
+              :class="{ 'has-error': !!modalState.errors.apiUrl }" />
+          </label>
+
+          <label class="form-field">
+            <span>{{ t('components.main.form.labels.officialSite') }}</span>
+            <BaseInput v-model="modalState.form.officialSite" type="text"
+              :placeholder="t('components.main.form.placeholders.officialSite')" />
+          </label>
+
+          <label class="form-field">
+            <span>{{ t('components.main.form.labels.apiKey') }}</span>
+            <BaseInput v-model="modalState.form.apiKey" type="text"
+              :placeholder="t('components.main.form.placeholders.apiKey')" />
+          </label>
+
+          <div class="form-field">
+            <span>{{ t('components.main.form.labels.icon') }}</span>
+            <Listbox v-model="modalState.form.icon" v-slot="{ open }">
+              <div class="icon-select">
+                <ListboxButton class="icon-select-button">
+                  <span class="icon-preview" v-html="iconSvg(modalState.form.icon)" aria-hidden="true"></span>
+                  <span class="icon-select-label">{{ modalState.form.icon }}</span>
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round" fill="none" />
+                  </svg>
+                </ListboxButton>
+                <ListboxOptions v-if="open" class="icon-select-options">
+                  <ListboxOption v-for="iconName in iconOptions" :key="iconName" :value="iconName"
+                    v-slot="{ active, selected }">
+                    <div :class="['icon-option', { active, selected }]">
+                      <span class="icon-preview" v-html="iconSvg(iconName)" aria-hidden="true"></span>
+                      <span class="icon-name">{{ iconName }}</span>
+                    </div>
+                  </ListboxOption>
+                </ListboxOptions>
+              </div>
+            </Listbox>
+          </div>
+
+          <div class="form-field">
+            <span>{{ t('components.main.form.labels.level') }}</span>
+            <Listbox v-model="modalState.form.level" v-slot="{ open }">
+              <div class="level-select">
+                <ListboxButton class="level-select-button">
+                  <span class="level-badge" :class="`level-${modalState.form.level || 1}`">
+                    L{{ modalState.form.level || 1 }}
+                  </span>
+                  <span class="level-label">
+                    Level {{ modalState.form.level || 1 }} - {{ getLevelDescription(modalState.form.level || 1) }}
+                  </span>
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round" fill="none" />
+                  </svg>
+                </ListboxButton>
+                <ListboxOptions v-if="open" class="level-select-options">
+                  <ListboxOption v-for="lvl in 10" :key="lvl" :value="lvl" v-slot="{ active, selected }">
+                    <div :class="['level-option', { active, selected }]">
+                      <span class="level-badge" :class="`level-${lvl}`">L{{ lvl }}</span>
+                      <span class="level-name">Level {{ lvl }} - {{ getLevelDescription(lvl) }}</span>
+                    </div>
+                  </ListboxOption>
+                </ListboxOptions>
+              </div>
+            </Listbox>
+            <span class="field-hint">{{ t('components.main.form.hints.level') }}</span>
+          </div>
+
+          <div class="form-field">
+            <ModelWhitelistEditor v-model="modalState.form.supportedModels" />
+          </div>
+
+          <div class="form-field">
+            <ModelMappingEditor v-model="modalState.form.modelMapping" />
+          </div>
+
+          <div class="form-field">
+            <CLIConfigEditor :platform="activeTab as CLIPlatform" v-model="modalState.form.cliConfig" />
+          </div>
+
+          <div class="form-field switch-field">
+            <span>{{ t('components.main.form.labels.enabled') }}</span>
+            <div class="switch-inline">
+              <label class="mac-switch">
+                <input type="checkbox" v-model="modalState.form.enabled" />
+                <span></span>
+              </label>
+              <span class="switch-text">
+                {{ modalState.form.enabled ? t('components.main.form.switch.on') : t('components.main.form.switch.off')
+                }}
+              </span>
+            </div>
+          </div>
+
+          <footer class="form-actions">
+            <BaseButton variant="outline" type="button" @click="closeModal">
+              {{ t('components.main.form.actions.cancel') }}
+            </BaseButton>
+            <BaseButton type="submit">
+              {{ t('components.main.form.actions.save') }}
+            </BaseButton>
+          </footer>
+        </form>
       </BaseModal>
-      <BaseModal
-      :open="confirmState.open"
-      :title="t('components.main.form.confirmDeleteTitle')"
-      variant="confirm"
-      @close="closeConfirm"
-    >
-      <div class="confirm-body">
-        <p>
-          {{ t('components.main.form.confirmDeleteMessage', { name: confirmState.card?.name ?? '' }) }}
-        </p>
-      </div>
-      <footer class="form-actions confirm-actions">
-        <BaseButton variant="outline" type="button" @click="closeConfirm">
-          {{ t('components.main.form.actions.cancel') }}
-        </BaseButton>
-        <BaseButton variant="danger" type="button" @click="confirmRemove">
-          {{ t('components.main.form.actions.delete') }}
-        </BaseButton>
-      </footer>
+      <BaseModal :open="confirmState.open" :title="t('components.main.form.confirmDeleteTitle')" variant="confirm"
+        @close="closeConfirm">
+        <div class="confirm-body">
+          <p>
+            {{ t('components.main.form.confirmDeleteMessage', { name: confirmState.card?.name ?? '' }) }}
+          </p>
+        </div>
+        <footer class="form-actions confirm-actions">
+          <BaseButton variant="outline" type="button" @click="closeConfirm">
+            {{ t('components.main.form.actions.cancel') }}
+          </BaseButton>
+          <BaseButton variant="danger" type="button" @click="confirmRemove">
+            {{ t('components.main.form.actions.delete') }}
+          </BaseButton>
+        </footer>
       </BaseModal>
     </div>
   </PageLayout>
@@ -616,12 +454,12 @@ import { useI18n } from 'vue-i18n'
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
 import { Browser, Call } from '@wailsio/runtime'
 import {
-	buildUsageHeatmapMatrix,
-	generateFallbackUsageHeatmap,
-	DEFAULT_HEATMAP_DAYS,
-	calculateHeatmapDayRange,
-	type UsageHeatmapWeek,
-	type UsageHeatmapDay,
+  buildUsageHeatmapMatrix,
+  generateFallbackUsageHeatmap,
+  DEFAULT_HEATMAP_DAYS,
+  calculateHeatmapDayRange,
+  type UsageHeatmapWeek,
+  type UsageHeatmapDay,
 } from '../../data/usageHeatmap'
 import { automationCardGroups, createAutomationCards, type AutomationCard } from '../../data/cards'
 import lobeIcons from '../../icons/lobeIconMap'
@@ -972,13 +810,13 @@ const compareVersions = (current: string, remote: string) => {
 }
 
 const loadUsageHeatmap = async () => {
-	try {
-		const rangeDays = calculateHeatmapDayRange(HEATMAP_DAYS)
-		const stats = await fetchHeatmapStats(rangeDays)
-		usageHeatmap.value = buildUsageHeatmapMatrix(stats, HEATMAP_DAYS)
-	} catch (error) {
-		console.error('Failed to load usage heatmap stats', error)
-	}
+  try {
+    const rangeDays = calculateHeatmapDayRange(HEATMAP_DAYS)
+    const stats = await fetchHeatmapStats(rangeDays)
+    usageHeatmap.value = buildUsageHeatmapMatrix(stats, HEATMAP_DAYS)
+  } catch (error) {
+    console.error('Failed to load usage heatmap stats', error)
+  }
 }
 
 // 本地 GeminiProvider 类型定义（避免依赖 CI 生成的 bindings）
@@ -1212,9 +1050,9 @@ const loadProviderStats = async (tab: ProviderTab) => {
     // Gemini 统计数据目前通过相同的日志接口，直接查询
     const stats = await fetchProviderDailyStats(tab as 'claude' | 'codex' | 'gemini')
     const mapped: Record<string, ProviderDailyStat> = {}
-    ;(stats ?? []).forEach((stat) => {
-      mapped[normalizeProviderKey(stat.provider)] = stat
-    })
+      ; (stats ?? []).forEach((stat) => {
+        mapped[normalizeProviderKey(stat.provider)] = stat
+      })
     providerStatsMap[tab] = mapped
     providerStatsLoaded[tab] = true
   } catch (error) {
@@ -1305,13 +1143,13 @@ const refreshAllData = async () => {
 type ProviderStatDisplay =
   | { state: 'loading' | 'empty'; message: string }
   | {
-      state: 'ready'
-      requests: string
-      tokens: string
-      cost: string
-      successRateLabel: string
-      successRateClass: string
-    }
+    state: 'ready'
+    requests: string
+    tokens: string
+    cost: string
+    successRateLabel: string
+    successRateClass: string
+  }
 
 const SUCCESS_RATE_THRESHOLDS = {
   healthy: 0.95,
@@ -1443,9 +1281,9 @@ onMounted(async () => {
     void loadBlacklistStatus(activeTab.value)
   }, 10_000)
 
-  // 存储定时器 ID 以便清理
-  ;(window as any).__blacklistPollingTimer = blacklistPollingTimer
-  ;(window as any).__handleWindowFocus = handleWindowFocus
+    // 存储定时器 ID 以便清理
+    ; (window as any).__blacklistPollingTimer = blacklistPollingTimer
+    ; (window as any).__handleWindowFocus = handleWindowFocus
 
   window.addEventListener('app-settings-updated', handleAppSettingsUpdated)
 })
@@ -2356,7 +2194,6 @@ const handleImportClick = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  margin-bottom: 16px;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
@@ -2426,5 +2263,106 @@ const handleImportClick = async () => {
 
 :global(.dark) .banner-btn.primary {
   background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+}
+
+.automation-card {
+  display: grid;
+  /* 定义 4 列：图标 | 信息主体 | 统计数据(右对齐) | 操作按钮 */
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  /* 稍微增加高度 */
+}
+
+/* 重新布局 leading */
+.card-leading {
+  display: contents;
+  /* 让子元素直接参与 Grid */
+}
+
+.card-text {
+  min-width: 0;
+  /* 防止文本溢出 */
+}
+
+.card-title-row {
+  margin-bottom: 4px;
+}
+
+/* 优化统计数据展示，使其不那么抢眼 */
+.card-metrics {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  /* 调小字体 */
+  font-family: 'SF Mono', monospace;
+  /* 使用等宽字体 */
+  color: var(--mac-text-secondary);
+  background: rgba(0, 0, 0, 0.03);
+  /* 给数据加一个浅色背景条 */
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* 如果屏幕窄，让统计数据换行 */
+@media (max-width: 768px) {
+  .automation-card {
+    grid-template-columns: auto 1fr auto;
+    /* 按钮换行或者挤在一起 */
+  }
+
+  .card-metrics {
+    display: none;
+    /* 极小屏幕隐藏非必要数据 */
+  }
+}
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 14px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.proxy-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--mac-surface-strong);
+  border-radius: 8px;
+  border: 1px solid var(--mac-border);
+  margin-right: 8px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: background 0.3s;
+}
+
+.proxy-status-pill.active .status-dot {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 20px;
+  background: var(--mac-border);
+  margin: 0 8px;
 }
 </style>

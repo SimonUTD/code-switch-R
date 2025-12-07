@@ -243,6 +243,10 @@
         "levelTitle": "Blacklist Level L{level}"
       }
     },
+    "console": {
+        "eyebrow": "Dashboard",
+        "title": "Tokens usage"
+    },
     "logs": {
       "eyebrow": "Request diagnostics",
       "title": "Request logs",

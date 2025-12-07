@@ -352,7 +352,7 @@ html.dark .nav-item:hover {
   font-weight: 700;
   padding: 2px 5px;
   border-radius: 4px;
-  background: rgba(16, 185, 129, 0.15);
+  /* background: rgba(16, 185, 129, 0.15); */
   color: #10b981;
   text-transform: uppercase;
   letter-spacing: 0.05em;

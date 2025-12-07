@@ -1,5 +1,5 @@
 <template>
-  <PageLayout :title="t('components.logs.title')">
+  <PageLayout :eyebrow="t('components.console.eyebrow')" :title="t('components.console.title')">
     <template #actions>
       <div class="refresh-indicator">
         <span>{{ t('components.logs.nextRefresh', { seconds: countdown }) }}</span>

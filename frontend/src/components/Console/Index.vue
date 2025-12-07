@@ -1,8 +1,47 @@
+<template>
+  <PageLayout :eyebrow="t('components.logs.eyebrow')" :title="t('components.logs.title')" :sticky="true">
+    <template #actions>
+      <div class="actions-group">
+        <button class="secondary-btn" @click="clearLogs">清空日志</button>
+        <label class="auto-scroll-toggle">
+          <input type="checkbox" v-model="autoScroll" />
+          <span>自动滚动</span>
+        </label>
+      </div>
+    </template>
+
+    <div class="console-container">
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>加载中...</p>
+      </div>
+
+      <div v-else class="console-content" ref="logsContainer">
+        <div v-if="logs.length === 0" class="empty-state">
+          <p>暂无日志</p>
+        </div>
+
+        <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="getLevelClass(log.level)">
+          <span class="log-timestamp">
+            <p>{{ formatTimestamp(log.timestamp) }}</p>
+            <span class="log-level">{{ log.level }}</span>
+          </span>
+          <span class="log-message">{{ log.message }}</span>
+        </div>
+      </div>
+    </div>
+
+  </PageLayout>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Call } from '@wailsio/runtime'
 import PageLayout from '../common/PageLayout.vue'
+
+const { t } = useI18n()
 
 interface ConsoleLog {
   timestamp: string
@@ -87,45 +126,6 @@ onUnmounted(() => {
 })
 </script>
 
-<template>
-  <PageLayout
-    title="控制台"
-  >
-    <template #actions>
-      <div class="actions-group">
-        <button class="secondary-btn" @click="clearLogs">清空日志</button>
-        <label class="auto-scroll-toggle">
-          <input type="checkbox" v-model="autoScroll" />
-          <span>自动滚动</span>
-        </label>
-      </div>
-    </template>
-
-    <div class="console-container">
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>加载中...</p>
-      </div>
-
-      <div v-else class="console-content" ref="logsContainer">
-        <div v-if="logs.length === 0" class="empty-state">
-          <p>暂无日志</p>
-        </div>
-
-        <div
-          v-for="(log, index) in logs"
-          :key="index"
-          class="log-entry"
-          :class="getLevelClass(log.level)"
-        >
-          <span class="log-timestamp">{{ formatTimestamp(log.timestamp) }}</span>
-          <span class="log-level">{{ log.level }}</span>
-          <span class="log-message">{{ log.message }}</span>
-        </div>
-      </div>
-    </div>
-  </PageLayout>
-</template>
 
 <style scoped>
 .actions-group {
@@ -236,6 +236,8 @@ html.dark .console-content {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

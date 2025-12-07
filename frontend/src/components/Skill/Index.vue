@@ -24,11 +24,11 @@
     </template>
 
     <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
-      <div class="skill-hero-text">
+      <!-- <div class="skill-hero-text">
         <p class="lead">
           {{ t('components.skill.hero.lead') }}
         </p>
-      </div>
+      </div> -->
 
       <section class="skill-list-section">
         <div v-if="loading" class="skill-empty">{{ t('components.skill.list.loading') }}</div>

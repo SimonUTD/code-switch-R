@@ -244,6 +244,10 @@
         "levelTitle": "黑名单等级 L{level}"
       }
     },
+    "console": {
+      "eyebrow": "控制台",
+      "title": "信息统计"
+    },
     "logs": {
       "eyebrow": "请求追踪",
       "title": "代理请求日志",

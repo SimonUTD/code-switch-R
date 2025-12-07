@@ -16,8 +16,8 @@ const routes = [
   { path: '/skill', component: SkillPage },
   { path: '/speedtest', component: SpeedTestPage },
   { path: '/env', component: EnvCheckPage },
-  { path: '/logs', component: LogsPage },
-  { path: '/console', component: ConsolePage },
+  { path: '/console', component: LogsPage },
+  { path: '/logs', component: ConsolePage },
   { path: '/settings', component: GeneralPage },
 ]
 

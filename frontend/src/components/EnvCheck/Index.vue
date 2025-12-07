@@ -1,3 +1,105 @@
+<template>
+  <PageLayout :eyebrow="t('envcheck.hero.eyebrow')" :title="t('envcheck.hero.title')">
+    <template #actions>
+      <div class="refresh-indicator">
+        <button class="ghost-icon" :title="t('components.skill.actions.refresh')"
+        @click="checkConflicts">
+        <svg viewBox="0 0 24 24" aria-hidden="true" >
+          <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </button>
+      </div>
+    </template>
+    <!-- <template #actions>
+      <button class="ghost-icon" :disabled="loading" @click="checkConflicts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spin: loading }">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        {{ t('envcheck.refresh') }}
+      </button>
+    </template> -->
+
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
+
+      <!-- Platform Tabs -->
+      <div class="platform-tabs">
+        <button v-for="platform in platforms" :key="platform.id" class="platform-tab"
+          :class="{ active: activePlatform === platform.id }" @click="activePlatform = platform.id">
+          {{ platform.name }}
+        </button>
+      </div>
+
+      <!-- Status Banner -->
+      <div class="status-banner" :class="{
+        warning: hasConflicts,
+        success: !hasConflicts && !loading && !error
+      }">
+        <svg v-if="hasConflicts" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <svg v-else-if="!loading && !error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <span v-if="loading">{{ t('envcheck.checking') }}</span>
+        <span v-else-if="error">{{ t('envcheck.error') }}</span>
+        <span v-else-if="hasConflicts">
+          {{ t('envcheck.found', { count: conflictCount }) }}
+        </span>
+        <span v-else>{{ t('envcheck.noConflicts') }}</span>
+      </div>
+
+      <!-- Conflict List -->
+      <div class="conflict-list" v-if="!loading">
+        <div v-if="error" class="error-state">
+          <p>{{ error }}</p>
+        </div>
+
+        <div v-for="(conflict, index) in conflicts" :key="index" class="conflict-card">
+          <div class="conflict-header">
+            <span class="conflict-var">{{ conflict.varName }}</span>
+            <span class="conflict-source-badge" :class="conflict.sourceType">
+              <svg v-if="conflict.sourceType === 'system'" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </span>
+          </div>
+
+          <div class="conflict-details">
+            <div class="detail-row">
+              <span class="detail-label">{{ t('envcheck.value') }}:</span>
+              <code class="detail-value">{{ maskValue(conflict.varValue) }}</code>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">{{ t('envcheck.source') }}:</span>
+              <span class="detail-value source-path">{{ getSourceLabel(conflict) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="loading-state">
+        <div class="spinner"></div>
+        <span>{{ t('envcheck.checking') }}</span>
+      </div>
+    </div>
+  </PageLayout>
+</template>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -64,108 +166,7 @@ onMounted(() => {
 })
 </script>
 
-<template>
-  <PageLayout
-    :eyebrow="t('envcheck.hero.eyebrow')"
-    :title="t('envcheck.hero.title')"
-  >
-    <template #actions>
-      <button class="ghost-icon" :disabled="loading" @click="checkConflicts">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spin: loading }">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-        {{ t('envcheck.refresh') }}
-      </button>
-    </template>
 
-    <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
-
-    <!-- Platform Tabs -->
-    <div class="platform-tabs">
-      <button
-        v-for="platform in platforms"
-        :key="platform.id"
-        class="platform-tab"
-        :class="{ active: activePlatform === platform.id }"
-        @click="activePlatform = platform.id"
-      >
-        {{ platform.name }}
-      </button>
-    </div>
-
-    <!-- Status Banner -->
-    <div
-      class="status-banner"
-      :class="{
-        warning: hasConflicts,
-        success: !hasConflicts && !loading && !error
-      }"
-    >
-      <svg v-if="hasConflicts" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
-      <svg v-else-if="!loading && !error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-      </svg>
-      <span v-if="loading">{{ t('envcheck.checking') }}</span>
-      <span v-else-if="error">{{ t('envcheck.error') }}</span>
-      <span v-else-if="hasConflicts">
-        {{ t('envcheck.found', { count: conflictCount }) }}
-      </span>
-      <span v-else>{{ t('envcheck.noConflicts') }}</span>
-    </div>
-
-    <!-- Conflict List -->
-    <div class="conflict-list" v-if="!loading">
-      <div v-if="error" class="error-state">
-        <p>{{ error }}</p>
-      </div>
-
-      <div
-        v-for="(conflict, index) in conflicts"
-        :key="index"
-        class="conflict-card"
-      >
-        <div class="conflict-header">
-          <span class="conflict-var">{{ conflict.varName }}</span>
-          <span class="conflict-source-badge" :class="conflict.sourceType">
-            <svg v-if="conflict.sourceType === 'system'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-          </span>
-        </div>
-
-        <div class="conflict-details">
-          <div class="detail-row">
-            <span class="detail-label">{{ t('envcheck.value') }}:</span>
-            <code class="detail-value">{{ maskValue(conflict.varValue) }}</code>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">{{ t('envcheck.source') }}:</span>
-            <span class="detail-value source-path">{{ getSourceLabel(conflict) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="loading-state">
-      <div class="spinner"></div>
-      <span>{{ t('envcheck.checking') }}</span>
-    </div>
-    </div>
-  </PageLayout>
-</template>
 
 <style scoped>
 .page-hero {
@@ -379,8 +380,13 @@ html.dark code.detail-value {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {
