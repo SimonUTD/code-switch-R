@@ -564,7 +564,7 @@ onMounted(() => {
 }
 
 .skill-list-section {
-  margin-top: 16px;
+  margin-top: 0px;
 }
 
 

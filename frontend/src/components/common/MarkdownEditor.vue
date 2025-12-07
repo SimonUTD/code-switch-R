@@ -1,3 +1,7 @@
+<template>
+  <div ref="editorRef" class="markdown-editor" :class="{ dark: isDark }"></div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
@@ -77,10 +81,6 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 </script>
-
-<template>
-  <div ref="editorRef" class="markdown-editor" :class="{ dark: isDark }"></div>
-</template>
 
 <style>
 .markdown-editor {

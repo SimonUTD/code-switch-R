@@ -58,10 +58,10 @@
               </div>
               <div class="mcp-text">
                 <div class="mcp-header">
-                  <h3 class="card-title">{{ server.name }}</h3>
-                  <span class="chip-type" :class="server.type">{{ typeLabel(server.type) }}</span>
+                  <span class="card-title">{{ server.name }}</span>
                 </div>
                 <div class="mcp-meta">
+                  <span class="chip-type" :class="server.type">{{ typeLabel(server.type) }}</span>
                   <span class="meta-item" :title="server.type === 'http' ? server.url : server.command">
                     {{ server.type === 'http' ? server.url : server.command }}
                   </span>
@@ -207,7 +207,8 @@
             <div class="preview-header">
               <span class="preview-count">{{ t('components.mcp.jsonImport.serverCount', {
                 count:
-                  jsonParseResult.servers.length }) }}</span>
+                  jsonParseResult.servers.length
+              }) }}</span>
               <button type="button" class="ghost-icon sm" @click="resetJsonImport"
                 :title="t('components.mcp.jsonImport.reset')">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1128,7 +1129,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex: 1; /* 占据剩余空间 */
+  flex: 1;
+  /* 占据剩余空间 */
   min-width: 0;
 }
 
@@ -1154,8 +1156,15 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.chip-type.stdio { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.chip-type.http { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.chip-type.stdio {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.chip-type.http {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
 
 .mcp-meta {
   font-size: 12px;
@@ -1169,7 +1178,8 @@ onMounted(() => {
 /* 核心优化：中间的平台开关组 */
 .mcp-platforms {
   display: flex;
-  gap: 24px; /* 开关组之间的间距 */
+  gap: 24px;
+  /* 开关组之间的间距 */
   padding: 0 32px;
   border-left: 1px solid var(--mac-border);
   border-right: 1px solid var(--mac-border);
@@ -1178,7 +1188,8 @@ onMounted(() => {
 
 .platform-toggle {
   display: flex;
-  flex-direction: column; /* 上下排列：文字在上，开关在下，或者反过来 */
+  flex-direction: column;
+  /* 上下排列：文字在上，开关在下，或者反过来 */
   align-items: center;
   gap: 6px;
 }
@@ -1197,6 +1208,7 @@ onMounted(() => {
     align-items: stretch;
     gap: 16px;
   }
+
   .mcp-platforms {
     border: none;
     border-top: 1px solid var(--mac-border);
@@ -1204,6 +1216,7 @@ onMounted(() => {
     margin: 0;
     justify-content: space-around;
   }
+
   .card-actions {
     flex-direction: row;
     justify-content: flex-end;

@@ -1,3 +1,145 @@
+<template>
+  <PageLayout
+    :eyebrow="t('prompts.hero.eyebrow')"
+    :title="t('prompts.hero.title')"
+  >
+    <!-- Platform Tabs -->
+    <div class="platform-tabs">
+      <button
+        v-for="platform in platforms"
+        :key="platform.id"
+        class="platform-tab"
+        :class="{ active: activePlatform === platform.id }"
+        @click="activePlatform = platform.id"
+      >
+        {{ platform.name }}
+      </button>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <span class="stat-text">
+        {{ t('prompts.stats.total', { count: promptCount }) }}
+      </span>
+      <span v-if="enabledPrompt" class="stat-enabled">
+        {{ t('prompts.stats.enabled') }}: {{ enabledPrompt.name }}
+      </span>
+    </div>
+
+    <!-- Prompt List -->
+    <div class="prompt-list" v-if="!loading">
+      <div v-if="promptList.length === 0" class="empty-state">
+        <p>{{ t('prompts.empty') }}</p>
+      </div>
+
+      <div
+        v-for="prompt in promptList"
+        :key="prompt.id"
+        class="prompt-card"
+        :class="{ enabled: prompt.enabled }"
+      >
+        <div class="prompt-main">
+          <button
+            class="toggle-switch"
+            :class="{ on: prompt.enabled }"
+            @click="handleToggleEnabled(prompt)"
+          >
+            <span class="toggle-slider"></span>
+          </button>
+          <div class="prompt-info">
+            <h3 class="prompt-name">{{ prompt.name }}</h3>
+            <p v-if="prompt.description" class="prompt-description">
+              {{ prompt.description }}
+            </p>
+          </div>
+        </div>
+        <div class="prompt-actions">
+          <button class="action-btn" @click="openEditModal(prompt)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="action-btn danger" @click="deletePrompt(prompt.id)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="loading-state">
+      <span>{{ t('prompts.loading') }}</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="page-actions">
+      <button class="primary-btn" @click="openCreateModal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        {{ t('prompts.actions.create') }}
+      </button>
+      <button class="secondary-btn" @click="handleImport" :disabled="loading">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        {{ t('prompts.actions.import') }}
+      </button>
+    </div>
+
+    <!-- Edit Modal -->
+    <Teleport to="body">
+      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+        <div class="modal-content">
+          <h2 class="modal-title">
+            {{ editingPrompt ? t('prompts.form.editTitle') : t('prompts.form.createTitle') }}
+          </h2>
+
+          <div class="form-group">
+            <label>{{ t('prompts.form.name') }}</label>
+            <input
+              v-model="formData.name"
+              type="text"
+              class="form-input"
+              :placeholder="t('prompts.form.namePlaceholder')"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t('prompts.form.description') }}</label>
+            <input
+              v-model="formData.description"
+              type="text"
+              class="form-input"
+              :placeholder="t('prompts.form.descriptionPlaceholder')"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>{{ t('prompts.form.content') }}</label>
+            <MarkdownEditor v-model="formData.content" />
+          </div>
+
+          <div class="modal-actions">
+            <button class="secondary-btn" @click="showModal = false">
+              {{ t('prompts.form.cancel') }}
+            </button>
+            <button class="primary-btn" @click="savePrompt" :disabled="!formData.name">
+              {{ t('prompts.form.save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </PageLayout>
+</template>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -141,148 +283,6 @@ onMounted(() => {
 })
 </script>
 
-<template>
-  <PageLayout
-    :eyebrow="t('prompts.hero.eyebrow')"
-    :title="t('prompts.hero.title')"
-  >
-    <!-- Platform Tabs -->
-    <div class="platform-tabs">
-      <button
-        v-for="platform in platforms"
-        :key="platform.id"
-        class="platform-tab"
-        :class="{ active: activePlatform === platform.id }"
-        @click="activePlatform = platform.id"
-      >
-        {{ platform.name }}
-      </button>
-    </div>
-
-    <!-- Stats Bar -->
-    <div class="stats-bar">
-      <span class="stat-text">
-        {{ t('prompts.stats.total', { count: promptCount }) }}
-      </span>
-      <span v-if="enabledPrompt" class="stat-enabled">
-        {{ t('prompts.stats.enabled') }}: {{ enabledPrompt.name }}
-      </span>
-    </div>
-
-    <!-- Prompt List -->
-    <div class="prompt-list" v-if="!loading">
-      <div v-if="promptList.length === 0" class="empty-state">
-        <p>{{ t('prompts.empty') }}</p>
-      </div>
-
-      <div
-        v-for="prompt in promptList"
-        :key="prompt.id"
-        class="prompt-card"
-        :class="{ enabled: prompt.enabled }"
-      >
-        <div class="prompt-main">
-          <button
-            class="toggle-switch"
-            :class="{ on: prompt.enabled }"
-            @click="handleToggleEnabled(prompt)"
-          >
-            <span class="toggle-slider"></span>
-          </button>
-          <div class="prompt-info">
-            <h3 class="prompt-name">{{ prompt.name }}</h3>
-            <p v-if="prompt.description" class="prompt-description">
-              {{ prompt.description }}
-            </p>
-          </div>
-        </div>
-        <div class="prompt-actions">
-          <button class="action-btn" @click="openEditModal(prompt)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-          <button class="action-btn danger" @click="deletePrompt(prompt.id)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="loading-state">
-      <span>{{ t('prompts.loading') }}</span>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="page-actions">
-      <button class="primary-btn" @click="openCreateModal">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        {{ t('prompts.actions.create') }}
-      </button>
-      <button class="secondary-btn" @click="handleImport" :disabled="loading">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        {{ t('prompts.actions.import') }}
-      </button>
-    </div>
-
-    <!-- Edit Modal -->
-    <Teleport to="body">
-      <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-        <div class="modal-content">
-          <h2 class="modal-title">
-            {{ editingPrompt ? t('prompts.form.editTitle') : t('prompts.form.createTitle') }}
-          </h2>
-
-          <div class="form-group">
-            <label>{{ t('prompts.form.name') }}</label>
-            <input
-              v-model="formData.name"
-              type="text"
-              class="form-input"
-              :placeholder="t('prompts.form.namePlaceholder')"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>{{ t('prompts.form.description') }}</label>
-            <input
-              v-model="formData.description"
-              type="text"
-              class="form-input"
-              :placeholder="t('prompts.form.descriptionPlaceholder')"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>{{ t('prompts.form.content') }}</label>
-            <MarkdownEditor v-model="formData.content" />
-          </div>
-
-          <div class="modal-actions">
-            <button class="secondary-btn" @click="showModal = false">
-              {{ t('prompts.form.cancel') }}
-            </button>
-            <button class="primary-btn" @click="savePrompt" :disabled="!formData.name">
-              {{ t('prompts.form.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-  </PageLayout>
-</template>
-
 <style scoped>
 .prompts-page {
   padding: 24px;
@@ -319,7 +319,7 @@ onMounted(() => {
 .platform-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
+  /* margin-bottom: 20px; */
   padding: 4px;
   background: var(--mac-surface);
   border-radius: 12px;

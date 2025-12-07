@@ -1,10 +1,3 @@
-<script setup lang="ts">
-defineProps<{
-   label: string
-   subLabel?: string
- }>()
-</script>
-
 <template>
   <div class="mac-list-row">
     <div class="mac-list-text">
@@ -16,6 +9,13 @@ defineProps<{
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+defineProps<{
+   label: string
+   subLabel?: string
+ }>()
+</script>
 
 <style scoped>
 .mac-list-row {

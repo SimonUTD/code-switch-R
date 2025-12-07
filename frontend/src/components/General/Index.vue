@@ -1,3 +1,223 @@
+<template>
+  <PageLayout
+    :eyebrow="$t('components.general.title.application')"
+    :show-back-button="true"
+    @back="goBack"
+  >
+      <section>
+        <h2 class="mac-section-title">{{ $t('components.general.title.application') }}</h2>
+        <div class="mac-panel">
+          <ListItem :label="$t('components.general.label.heatmap')">
+            <label class="mac-switch">
+              <input
+                type="checkbox"
+                :disabled="settingsLoading || saveBusy"
+                v-model="heatmapEnabled"
+                @change="persistAppSettings"
+              />
+              <span></span>
+            </label>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.homeTitle')">
+            <label class="mac-switch">
+              <input
+                type="checkbox"
+                :disabled="settingsLoading || saveBusy"
+                v-model="homeTitleVisible"
+                @change="persistAppSettings"
+              />
+              <span></span>
+            </label>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.autoStart')">
+            <label class="mac-switch">
+              <input
+                type="checkbox"
+                :disabled="settingsLoading || saveBusy"
+                v-model="autoStartEnabled"
+                @change="persistAppSettings"
+              />
+              <span></span>
+            </label>
+          </ListItem>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mac-section-title">{{ $t('components.general.title.blacklist') }}</h2>
+        <div class="mac-panel">
+          <ListItem :label="$t('components.general.label.enableBlacklist')">
+            <div class="toggle-with-hint">
+              <label class="mac-switch">
+                <input
+                  type="checkbox"
+                  :disabled="blacklistLoading || blacklistSaving"
+                  v-model="blacklistEnabled"
+                  @change="toggleBlacklist"
+                />
+                <span></span>
+              </label>
+              <span class="hint-text">{{ $t('components.general.label.enableBlacklistHint') }}</span>
+            </div>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.enableLevelBlacklist')">
+            <div class="toggle-with-hint">
+              <label class="mac-switch">
+                <input
+                  type="checkbox"
+                  :disabled="blacklistLoading || blacklistSaving"
+                  v-model="levelBlacklistEnabled"
+                  @change="toggleLevelBlacklist"
+                />
+                <span></span>
+              </label>
+              <span class="hint-text">{{ $t('components.general.label.enableLevelBlacklistHint') }}</span>
+            </div>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.blacklistThreshold')">
+            <select
+              v-model.number="blacklistThreshold"
+              :disabled="blacklistLoading || blacklistSaving"
+              class="mac-select">
+              <option :value="1">1 {{ $t('components.general.label.times') }}</option>
+              <option :value="2">2 {{ $t('components.general.label.times') }}</option>
+              <option :value="3">3 {{ $t('components.general.label.times') }}</option>
+              <option :value="4">4 {{ $t('components.general.label.times') }}</option>
+              <option :value="5">5 {{ $t('components.general.label.times') }}</option>
+              <option :value="6">6 {{ $t('components.general.label.times') }}</option>
+              <option :value="7">7 {{ $t('components.general.label.times') }}</option>
+              <option :value="8">8 {{ $t('components.general.label.times') }}</option>
+              <option :value="9">9 {{ $t('components.general.label.times') }}</option>
+            </select>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.blacklistDuration')">
+            <select
+              v-model.number="blacklistDuration"
+              :disabled="blacklistLoading || blacklistSaving"
+              class="mac-select">
+              <option :value="5">5 {{ $t('components.general.label.minutes') }}</option>
+              <option :value="15">15 {{ $t('components.general.label.minutes') }}</option>
+              <option :value="30">30 {{ $t('components.general.label.minutes') }}</option>
+              <option :value="60">60 {{ $t('components.general.label.minutes') }}</option>
+            </select>
+          </ListItem>
+          <ListItem :label="$t('components.general.label.saveBlacklist')">
+            <button
+              @click="saveBlacklistSettings"
+              :disabled="blacklistLoading || blacklistSaving"
+              class="primary-btn">
+              {{ blacklistSaving ? $t('components.general.label.saving') : $t('components.general.label.save') }}
+            </button>
+          </ListItem>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mac-section-title">{{ $t('components.general.title.dataImport') }}</h2>
+        <div class="mac-panel">
+          <ListItem :label="$t('components.general.import.configPath')">
+            <input
+              type="text"
+              v-model="importPath"
+              :placeholder="$t('components.general.import.pathPlaceholder')"
+              class="mac-input import-path-input"
+            />
+          </ListItem>
+          <ListItem :label="$t('components.general.import.status')">
+            <span class="info-text" v-if="importLoading">
+              {{ $t('components.general.import.loading') }}
+            </span>
+            <span class="info-text" v-else-if="importStatus?.config_exists">
+              {{ $t('components.general.import.configFound') }}
+              <span v-if="importStatus.pending_provider_count > 0 || importStatus.pending_mcp_count > 0">
+                ({{ $t('components.general.import.pendingCount', {
+                  providers: importStatus.pending_provider_count,
+                  mcp: importStatus.pending_mcp_count
+                }) }})
+              </span>
+            </span>
+            <span class="info-text warning" v-else-if="importStatus">
+              {{ $t('components.general.import.configNotFound') }}
+            </span>
+          </ListItem>
+          <ListItem :label="$t('components.general.import.action')">
+            <button
+              @click="handleImport"
+              :disabled="importing || !importPath.trim()"
+              class="action-btn">
+              {{ importing ? $t('components.general.import.importing') : $t('components.general.import.importBtn') }}
+            </button>
+          </ListItem>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mac-section-title">{{ $t('components.general.title.exterior') }}</h2>
+        <div class="mac-panel">
+          <ListItem :label="$t('components.general.label.language')">
+            <LanguageSwitcher />
+          </ListItem>
+          <ListItem :label="$t('components.general.label.theme')">
+            <ThemeSetting />
+          </ListItem>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="mac-section-title">{{ $t('components.general.title.update') }}</h2>
+        <div class="mac-panel">
+          <ListItem :label="$t('components.general.label.autoUpdate')">
+            <label class="mac-switch">
+              <input
+                type="checkbox"
+                :disabled="settingsLoading || saveBusy"
+                v-model="autoUpdateEnabled"
+                @change="persistAppSettings"
+              />
+              <span></span>
+            </label>
+          </ListItem>
+
+          <ListItem :label="$t('components.general.label.lastCheck')">
+            <span class="info-text">{{ formatLastCheckTime(updateState?.last_check_time) }}</span>
+            <span v-if="updateState && updateState.consecutive_failures > 0" class="warning-badge">
+              ⚠️ {{ $t('components.general.update.checkFailed', { count: updateState.consecutive_failures }) }}
+            </span>
+          </ListItem>
+
+          <ListItem :label="$t('components.general.label.currentVersion')">
+            <span class="version-text">{{ appVersion }}</span>
+          </ListItem>
+
+          <ListItem
+            v-if="updateState?.latest_known_version && updateState.latest_known_version !== appVersion"
+            :label="$t('components.general.label.latestVersion')">
+            <span class="version-text highlight">{{ updateState.latest_known_version }} 🆕</span>
+          </ListItem>
+
+          <ListItem :label="$t('components.general.label.checkNow')">
+            <button
+              @click="checkUpdateManually"
+              :disabled="checking"
+              class="action-btn">
+              {{ checking ? $t('components.general.update.checking') : $t('components.general.update.checkNow') }}
+            </button>
+          </ListItem>
+
+          <ListItem
+            v-if="updateState?.update_ready"
+            :label="$t('components.general.label.manualUpdate')">
+            <button
+              @click="installAndRestart"
+              class="primary-btn">
+              {{ $t('components.general.update.installAndRestart') }}
+            </button>
+          </ListItem>
+        </div>
+      </section>
+  </PageLayout>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -345,226 +565,6 @@ onMounted(async () => {
   await loadImportStatus()
 })
 </script>
-
-<template>
-  <PageLayout
-    :eyebrow="$t('components.general.title.application')"
-    :show-back-button="true"
-    @back="goBack"
-  >
-      <section>
-        <h2 class="mac-section-title">{{ $t('components.general.title.application') }}</h2>
-        <div class="mac-panel">
-          <ListItem :label="$t('components.general.label.heatmap')">
-            <label class="mac-switch">
-              <input
-                type="checkbox"
-                :disabled="settingsLoading || saveBusy"
-                v-model="heatmapEnabled"
-                @change="persistAppSettings"
-              />
-              <span></span>
-            </label>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.homeTitle')">
-            <label class="mac-switch">
-              <input
-                type="checkbox"
-                :disabled="settingsLoading || saveBusy"
-                v-model="homeTitleVisible"
-                @change="persistAppSettings"
-              />
-              <span></span>
-            </label>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.autoStart')">
-            <label class="mac-switch">
-              <input
-                type="checkbox"
-                :disabled="settingsLoading || saveBusy"
-                v-model="autoStartEnabled"
-                @change="persistAppSettings"
-              />
-              <span></span>
-            </label>
-          </ListItem>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="mac-section-title">{{ $t('components.general.title.blacklist') }}</h2>
-        <div class="mac-panel">
-          <ListItem :label="$t('components.general.label.enableBlacklist')">
-            <div class="toggle-with-hint">
-              <label class="mac-switch">
-                <input
-                  type="checkbox"
-                  :disabled="blacklistLoading || blacklistSaving"
-                  v-model="blacklistEnabled"
-                  @change="toggleBlacklist"
-                />
-                <span></span>
-              </label>
-              <span class="hint-text">{{ $t('components.general.label.enableBlacklistHint') }}</span>
-            </div>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.enableLevelBlacklist')">
-            <div class="toggle-with-hint">
-              <label class="mac-switch">
-                <input
-                  type="checkbox"
-                  :disabled="blacklistLoading || blacklistSaving"
-                  v-model="levelBlacklistEnabled"
-                  @change="toggleLevelBlacklist"
-                />
-                <span></span>
-              </label>
-              <span class="hint-text">{{ $t('components.general.label.enableLevelBlacklistHint') }}</span>
-            </div>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.blacklistThreshold')">
-            <select
-              v-model.number="blacklistThreshold"
-              :disabled="blacklistLoading || blacklistSaving"
-              class="mac-select">
-              <option :value="1">1 {{ $t('components.general.label.times') }}</option>
-              <option :value="2">2 {{ $t('components.general.label.times') }}</option>
-              <option :value="3">3 {{ $t('components.general.label.times') }}</option>
-              <option :value="4">4 {{ $t('components.general.label.times') }}</option>
-              <option :value="5">5 {{ $t('components.general.label.times') }}</option>
-              <option :value="6">6 {{ $t('components.general.label.times') }}</option>
-              <option :value="7">7 {{ $t('components.general.label.times') }}</option>
-              <option :value="8">8 {{ $t('components.general.label.times') }}</option>
-              <option :value="9">9 {{ $t('components.general.label.times') }}</option>
-            </select>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.blacklistDuration')">
-            <select
-              v-model.number="blacklistDuration"
-              :disabled="blacklistLoading || blacklistSaving"
-              class="mac-select">
-              <option :value="5">5 {{ $t('components.general.label.minutes') }}</option>
-              <option :value="15">15 {{ $t('components.general.label.minutes') }}</option>
-              <option :value="30">30 {{ $t('components.general.label.minutes') }}</option>
-              <option :value="60">60 {{ $t('components.general.label.minutes') }}</option>
-            </select>
-          </ListItem>
-          <ListItem :label="$t('components.general.label.saveBlacklist')">
-            <button
-              @click="saveBlacklistSettings"
-              :disabled="blacklistLoading || blacklistSaving"
-              class="primary-btn">
-              {{ blacklistSaving ? $t('components.general.label.saving') : $t('components.general.label.save') }}
-            </button>
-          </ListItem>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="mac-section-title">{{ $t('components.general.title.dataImport') }}</h2>
-        <div class="mac-panel">
-          <ListItem :label="$t('components.general.import.configPath')">
-            <input
-              type="text"
-              v-model="importPath"
-              :placeholder="$t('components.general.import.pathPlaceholder')"
-              class="mac-input import-path-input"
-            />
-          </ListItem>
-          <ListItem :label="$t('components.general.import.status')">
-            <span class="info-text" v-if="importLoading">
-              {{ $t('components.general.import.loading') }}
-            </span>
-            <span class="info-text" v-else-if="importStatus?.config_exists">
-              {{ $t('components.general.import.configFound') }}
-              <span v-if="importStatus.pending_provider_count > 0 || importStatus.pending_mcp_count > 0">
-                ({{ $t('components.general.import.pendingCount', {
-                  providers: importStatus.pending_provider_count,
-                  mcp: importStatus.pending_mcp_count
-                }) }})
-              </span>
-            </span>
-            <span class="info-text warning" v-else-if="importStatus">
-              {{ $t('components.general.import.configNotFound') }}
-            </span>
-          </ListItem>
-          <ListItem :label="$t('components.general.import.action')">
-            <button
-              @click="handleImport"
-              :disabled="importing || !importPath.trim()"
-              class="action-btn">
-              {{ importing ? $t('components.general.import.importing') : $t('components.general.import.importBtn') }}
-            </button>
-          </ListItem>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="mac-section-title">{{ $t('components.general.title.exterior') }}</h2>
-        <div class="mac-panel">
-          <ListItem :label="$t('components.general.label.language')">
-            <LanguageSwitcher />
-          </ListItem>
-          <ListItem :label="$t('components.general.label.theme')">
-            <ThemeSetting />
-          </ListItem>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="mac-section-title">{{ $t('components.general.title.update') }}</h2>
-        <div class="mac-panel">
-          <ListItem :label="$t('components.general.label.autoUpdate')">
-            <label class="mac-switch">
-              <input
-                type="checkbox"
-                :disabled="settingsLoading || saveBusy"
-                v-model="autoUpdateEnabled"
-                @change="persistAppSettings"
-              />
-              <span></span>
-            </label>
-          </ListItem>
-
-          <ListItem :label="$t('components.general.label.lastCheck')">
-            <span class="info-text">{{ formatLastCheckTime(updateState?.last_check_time) }}</span>
-            <span v-if="updateState && updateState.consecutive_failures > 0" class="warning-badge">
-              ⚠️ {{ $t('components.general.update.checkFailed', { count: updateState.consecutive_failures }) }}
-            </span>
-          </ListItem>
-
-          <ListItem :label="$t('components.general.label.currentVersion')">
-            <span class="version-text">{{ appVersion }}</span>
-          </ListItem>
-
-          <ListItem
-            v-if="updateState?.latest_known_version && updateState.latest_known_version !== appVersion"
-            :label="$t('components.general.label.latestVersion')">
-            <span class="version-text highlight">{{ updateState.latest_known_version }} 🆕</span>
-          </ListItem>
-
-          <ListItem :label="$t('components.general.label.checkNow')">
-            <button
-              @click="checkUpdateManually"
-              :disabled="checking"
-              class="action-btn">
-              {{ checking ? $t('components.general.update.checking') : $t('components.general.update.checkNow') }}
-            </button>
-          </ListItem>
-
-          <ListItem
-            v-if="updateState?.update_ready"
-            :label="$t('components.general.label.manualUpdate')">
-            <button
-              @click="installAndRestart"
-              class="primary-btn">
-              {{ $t('components.general.update.installAndRestart') }}
-            </button>
-          </ListItem>
-        </div>
-      </section>
-  </PageLayout>
-</template>
 
 <style scoped>
 .toggle-with-hint {

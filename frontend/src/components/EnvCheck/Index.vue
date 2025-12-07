@@ -198,7 +198,7 @@ onMounted(() => {
 .platform-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
+  /* margin-bottom: 20px; */
   padding: 4px;
   background: var(--mac-surface);
   border-radius: 12px;

@@ -1,3 +1,34 @@
+<template>
+  <div
+    class="mac-shortcut-input"
+    tabindex="0"
+    @focus="startRecording"
+    @click="startRecording"
+    @blur="stopRecording"
+  >
+    <div class="mac-shortcut-display">
+      <span
+        v-for="modifier in activeModifiers"
+        :key="modifier.key"
+        :class="['modifier-symbol', { active: modifier.active }]"
+      >
+        {{ modifier.symbol }}
+      </span>
+      <span v-if="mainKeyDisplay" class="main-key">{{ mainKeyDisplay }}</span>
+      <span v-else class="mac-shortcut-placeholder">{{ placeholderText }}</span>
+    </div>
+    <button
+      v-if="isFinalized && mainKeyDisplay"
+      type="button"
+      class="mac-shortcut-clear"
+      @click.stop="clearAll"
+      aria-label="Clear shortcut"
+    >
+      ✕
+    </button>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -138,37 +169,6 @@ watch(() => props.modelValue, (val) => {
 
 const placeholderText = computed(() => t('components.shortcut.placeholder'))
 </script>
-
-<template>
-  <div
-    class="mac-shortcut-input"
-    tabindex="0"
-    @focus="startRecording"
-    @click="startRecording"
-    @blur="stopRecording"
-  >
-    <div class="mac-shortcut-display">
-      <span
-        v-for="modifier in activeModifiers"
-        :key="modifier.key"
-        :class="['modifier-symbol', { active: modifier.active }]"
-      >
-        {{ modifier.symbol }}
-      </span>
-      <span v-if="mainKeyDisplay" class="main-key">{{ mainKeyDisplay }}</span>
-      <span v-else class="mac-shortcut-placeholder">{{ placeholderText }}</span>
-    </div>
-    <button
-      v-if="isFinalized && mainKeyDisplay"
-      type="button"
-      class="mac-shortcut-clear"
-      @click.stop="clearAll"
-      aria-label="Clear shortcut"
-    >
-      ✕
-    </button>
-  </div>
-</template>
 
 <style scoped>
 .mac-shortcut-input {
