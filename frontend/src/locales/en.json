@@ -142,7 +142,9 @@
         "hostCodex": "Host Codex",
         "tooltip": "Route traffic through the local relay to manage API keys centrally.",
         "statusOn": "Managed",
-        "statusOff": "Not managed"
+        "statusOff": "Not managed",
+        "on": "On",
+        "off": "Off"
       },
       "logs": {
         "view": "View logs",

@@ -143,7 +143,9 @@
         "hostCodex": "托管 Codex",
         "tooltip": "通过本地转发托管 API 访问，统一管理密钥与配额。",
         "statusOn": "已托管",
-        "statusOff": "未托管"
+        "statusOff": "未托管",
+        "on":"启用",
+        "off":"禁用"
       },
       "logs": {
         "view": "查看日志",

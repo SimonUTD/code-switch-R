@@ -196,7 +196,7 @@
           <div class="section-controls">
             <div class="proxy-status-pill" :class="{ active: activeProxyState }">
               <span class="status-dot"></span>
-              <span class="status-text">{{ activeProxyState ? 'Relay On' : 'Relay Off' }}</span>
+              <span class="status-text">{{ activeProxyState ?  t('components.main.relayToggle.on')  :  t('components.main.relayToggle.off')  }}</span>
               <label class="mac-switch sm">
                 <input type="checkbox" :checked="activeProxyState" :disabled="activeProxyBusy"
                   @change="onProxyToggle" />
