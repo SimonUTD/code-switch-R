@@ -71,9 +71,14 @@
 
             <div class="mcp-platforms">
               <div v-for="option in platformOptions" :key="option.id" class="platform-row">
+                <!-- 第一行：label + checkbox -->
                 <div class="platform-info">
                   <span class="platform-label">{{ option.label }}</span>
-                  <div class="platform-controls">
+                </div>
+
+                <!-- 第二行：两个按钮 -->
+                <div class="card-actions">
+                    <div class="platform-controls">
                     <span class="platform-status" :class="{ active: platformActive(server, option.id) }">
                       {{ platformActive(server, option.id) ? t('components.mcp.status.active') :
                         t('components.mcp.status.inactive') }}
@@ -84,9 +89,6 @@
                       <span></span>
                     </label>
                   </div>
-                </div>
-
-                <div class="card-actions">
                   <button class="ghost-icon" :aria-label="t('components.mcp.list.edit')" @click="openEditModal(server)">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M4 21v-3.5L15.5 6.5a2 2 0 012.83 0l.67.67a2 2 0 010 2.83L7.5 21H4z" fill="none"
@@ -819,9 +821,9 @@ onMounted(() => {
 
 .platform-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  /* gap: 0.75rem; */
+  width: 100%;
 }
 
 .platform-info {
@@ -853,9 +855,9 @@ onMounted(() => {
 
 .card-actions {
   display: flex;
-  flex-direction: column;
   gap: 0.5rem;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .empty-state {
@@ -1142,9 +1144,10 @@ onMounted(() => {
 
 .mcp-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 16px 24px;
+  gap: 24px;
 }
 
 .mcp-info-group {
@@ -1152,8 +1155,9 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   flex: 1;
-  /* 占据剩余空间 */
+  /* 固定宽度，不占据剩余空间 */
   min-width: 0;
+  max-width: 40%;
 }
 
 .mcp-text {
@@ -1202,10 +1206,13 @@ onMounted(() => {
   display: flex;
   gap: 24px;
   /* 开关组之间的间距 */
-  padding: 0 32px;
+  padding: 0 24px;
   border-left: 1px solid var(--mac-border);
-  border-right: 1px solid var(--mac-border);
-  margin: 0 24px;
+  /* border-right: 1px solid var(--mac-border); */
+  margin: 0 16px;
+  flex: 1;
+  /* 占据剩余空间 */
+  min-width: 300px;
 }
 
 .platform-toggle {
@@ -1231,17 +1238,32 @@ onMounted(() => {
     gap: 16px;
   }
 
+  .mcp-info-group {
+    max-width: 100%;
+  }
+
   .mcp-platforms {
     border: none;
     border-top: 1px solid var(--mac-border);
     padding: 16px 0 0;
     margin: 0;
     justify-content: space-around;
+    min-width: auto;
   }
 
   .card-actions {
     flex-direction: row;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 1200px) {
+  .mcp-info-group {
+    max-width: 35%;
+  }
+  
+  .mcp-platforms {
+    min-width: 280px;
   }
 }
 </style>
