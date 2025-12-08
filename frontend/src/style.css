@@ -34,10 +34,10 @@
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
+  --spacing-lg: 16px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 16px;
+  --spacing-3xl: 16px;
 
   /* 页面布局令牌 */
   --spacing-page: var(--spacing-lg);        /* 页面容器padding: 24px */
@@ -566,7 +566,7 @@ html.dark .mac-sidebar-item:hover {
 .automation-section {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .section-header {
@@ -1187,7 +1187,7 @@ html.dark .mac-sidebar-item:hover {
 .automation-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .automation-card {

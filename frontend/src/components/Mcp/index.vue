@@ -1,6 +1,6 @@
 <template>
   <PageLayout :eyebrow="t('components.mcp.hero.eyebrow')" :title="t('components.mcp.hero.title')">
-    <template #actions>
+    <!-- <template #actions>
       <button class="ghost-icon" :aria-label="t('components.mcp.controls.settings')" @click="goToSettings">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
@@ -10,7 +10,7 @@
             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
       </button>
-    </template>
+    </template> -->
 
     <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
       <!-- <section class="contrib-hero">
@@ -18,8 +18,15 @@
       </section> -->
 
       <section class="automation-section">
-        <div class="section-header section-header-solo">
+
+        <div class="section-header">
+          <div class="tab-group-container">
+
+          </div>
+
           <div class="section-controls">
+
+            <div class="divider-vertical"></div>
             <button class="ghost-icon" :aria-label="t('components.mcp.controls.refresh')" :disabled="loading"
               @click="reload">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -35,6 +42,7 @@
                   stroke-linejoin="round" fill="none" />
               </svg>
             </button>
+
           </div>
         </div>
 
@@ -78,7 +86,7 @@
 
                 <!-- 第二行：两个按钮 -->
                 <div class="card-actions">
-                    <div class="platform-controls">
+                  <div class="platform-controls">
                     <span class="platform-status" :class="{ active: platformActive(server, option.id) }">
                       {{ platformActive(server, option.id) ? t('components.mcp.status.active') :
                         t('components.mcp.status.inactive') }}
@@ -1261,9 +1269,20 @@ onMounted(() => {
   .mcp-info-group {
     max-width: 35%;
   }
-  
+
   .mcp-platforms {
     min-width: 280px;
   }
+}
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 12px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

@@ -1,38 +1,30 @@
 <template>
   <PageLayout :eyebrow="t('envcheck.hero.eyebrow')" :title="t('envcheck.hero.title')">
-    <template #actions>
-      <div class="refresh-indicator">
-        <button class="ghost-icon" :title="t('components.skill.actions.refresh')"
-        @click="checkConflicts">
-        <svg viewBox="0 0 24 24" aria-hidden="true" >
-          <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
-      </button>
+    <template #actions></template>
+    <div class="section-header">
+      <div class="tab-group-container">
+        <div class="tab-group" role="tablist">
+          <button v-for="platform in platforms" :key="platform.id" class="tab-pill"
+            :class="{ active: activePlatform === platform.id }" @click="activePlatform = platform.id">
+            {{ platform.name }}
+          </button>
+        </div>
       </div>
-    </template>
-    <!-- <template #actions>
-      <button class="ghost-icon" :disabled="loading" @click="checkConflicts">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spin: loading }">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-        {{ t('envcheck.refresh') }}
-      </button>
-    </template> -->
 
-    <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
-
-      <!-- Platform Tabs -->
-      <div class="platform-tabs">
-        <button v-for="platform in platforms" :key="platform.id" class="platform-tab"
-          :class="{ active: activePlatform === platform.id }" @click="activePlatform = platform.id">
-          {{ platform.name }}
+      <div class="section-controls">
+        <div class="divider-vertical"></div>
+        <button class="ghost-icon" :title="t('components.skill.actions.refresh')" @click="checkConflicts">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
         </button>
       </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
 
       <!-- Status Banner -->
       <div class="status-banner" :class="{
@@ -241,9 +233,10 @@ html.dark .platform-tab:hover {
   gap: 12px;
   padding: 16px 20px;
   border-radius: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   font-size: 0.95rem;
   font-weight: 500;
+  margin-top: 12px;
 }
 
 .status-banner svg {
@@ -434,5 +427,16 @@ html.dark code.detail-value {
 
 .refresh-btn svg.spin {
   animation: spin 1s linear infinite;
+}
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 12px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

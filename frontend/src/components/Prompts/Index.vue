@@ -1,10 +1,46 @@
 <template>
-  <PageLayout
-    :eyebrow="t('prompts.hero.eyebrow')"
-    :title="t('prompts.hero.title')"
-  >
+  <PageLayout :eyebrow="t('prompts.hero.eyebrow')" :title="t('prompts.hero.title')">
+    <div class="section-header">
+      <div class="tab-group-container">
+        <div class="tab-group" role="tablist">
+          <button v-for="platform in platforms" :key="platform.id" class="tab-pill"
+            :class="{ active: activePlatform === platform.id }" @click="activePlatform = platform.id">
+            {{ platform.name }}
+          </button>
+        </div>
+      </div>
+
+      <div class="section-controls">
+        <!-- <div class="stats-bar"> -->
+          <span class="stat-text">
+            {{ t('prompts.stats.total', { count: promptCount }) }}
+          </span>
+          <span v-if="enabledPrompt" class="stat-enabled">
+            {{ t('prompts.stats.enabled') }}: {{ enabledPrompt.name }}
+          </span>
+        <!-- </div> -->
+
+        <div class="divider-vertical"></div>
+
+        <button class="ghost-icon" @click="openCreateModal" :data-tooltip="t('prompts.actions.create')" >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <!-- {{ t('prompts.actions.create') }} -->
+        </button>
+        <button class="ghost-icon" @click="handleImport" :disabled="loading"  :data-tooltip="t('prompts.actions.import')" >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <!-- {{ t('prompts.actions.import') }} -->
+        </button>
+      </div>
+    </div>
     <!-- Platform Tabs -->
-    <div class="platform-tabs">
+    <!-- <div class="platform-tabs">
       <button
         v-for="platform in platforms"
         :key="platform.id"
@@ -14,17 +50,17 @@
       >
         {{ platform.name }}
       </button>
-    </div>
+    </div> -->
 
     <!-- Stats Bar -->
-    <div class="stats-bar">
+    <!-- <div class="stats-bar">
       <span class="stat-text">
         {{ t('prompts.stats.total', { count: promptCount }) }}
       </span>
       <span v-if="enabledPrompt" class="stat-enabled">
         {{ t('prompts.stats.enabled') }}: {{ enabledPrompt.name }}
       </span>
-    </div>
+    </div> -->
 
     <!-- Prompt List -->
     <div class="prompt-list" v-if="!loading">
@@ -32,18 +68,9 @@
         <p>{{ t('prompts.empty') }}</p>
       </div>
 
-      <div
-        v-for="prompt in promptList"
-        :key="prompt.id"
-        class="prompt-card"
-        :class="{ enabled: prompt.enabled }"
-      >
+      <div v-for="prompt in promptList" :key="prompt.id" class="prompt-card" :class="{ enabled: prompt.enabled }">
         <div class="prompt-main">
-          <button
-            class="toggle-switch"
-            :class="{ on: prompt.enabled }"
-            @click="handleToggleEnabled(prompt)"
-          >
+          <button class="toggle-switch" :class="{ on: prompt.enabled }" @click="handleToggleEnabled(prompt)">
             <span class="toggle-slider"></span>
           </button>
           <div class="prompt-info">
@@ -75,7 +102,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="page-actions">
+    <!-- <div class="page-actions">
       <button class="primary-btn" @click="openCreateModal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -91,7 +118,7 @@
         </svg>
         {{ t('prompts.actions.import') }}
       </button>
-    </div>
+    </div> -->
 
     <!-- Edit Modal -->
     <Teleport to="body">
@@ -103,22 +130,14 @@
 
           <div class="form-group">
             <label>{{ t('prompts.form.name') }}</label>
-            <input
-              v-model="formData.name"
-              type="text"
-              class="form-input"
-              :placeholder="t('prompts.form.namePlaceholder')"
-            />
+            <input v-model="formData.name" type="text" class="form-input"
+              :placeholder="t('prompts.form.namePlaceholder')" />
           </div>
 
           <div class="form-group">
             <label>{{ t('prompts.form.description') }}</label>
-            <input
-              v-model="formData.description"
-              type="text"
-              class="form-input"
-              :placeholder="t('prompts.form.descriptionPlaceholder')"
-            />
+            <input v-model="formData.description" type="text" class="form-input"
+              :placeholder="t('prompts.form.descriptionPlaceholder')" />
           </div>
 
           <div class="form-group">
@@ -379,6 +398,7 @@ html.dark .platform-tab:hover {
 }
 
 .prompt-list {
+  margin-top:12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -625,4 +645,16 @@ html.dark .action-btn:hover {
   gap: 12px;
   margin-top: 24px;
 }
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 12px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 </style>

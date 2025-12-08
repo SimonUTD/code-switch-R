@@ -1,26 +1,7 @@
 <template>
-  <PageLayout
-    :eyebrow="t('components.skill.hero.eyebrow')"
-    title="Claude Skill"
-  >
+  <PageLayout :eyebrow="t('components.skill.hero.eyebrow')" title="Claude Skill">
     <template #actions>
-      <button class="ghost-icon" :title="t('components.skill.actions.refresh')"
-        :data-tooltip="t('components.skill.actions.refresh')" :disabled="refreshing" @click="refresh">
-        <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ spin: refreshing }">
-          <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button class="ghost-icon" :title="t('components.skill.repos.open')"
-        :data-tooltip="t('components.skill.repos.open')" @click="openRepoModal">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 5h14v6H5zM7 13h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M12 7.5v1M12 15.5v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
-      </button>
+
     </template>
 
     <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
@@ -29,6 +10,35 @@
           {{ t('components.skill.hero.lead') }}
         </p>
       </div> -->
+
+      <div class="section-header">
+        <div class="tab-group-container">
+
+        </div>
+
+        <div class="section-controls">
+
+          <div class="divider-vertical"></div>
+          <button class="ghost-icon" :title="t('components.skill.actions.refresh')"
+            :data-tooltip="t('components.skill.actions.refresh')" :disabled="refreshing" @click="refresh">
+            <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ spin: refreshing }">
+              <path d="M20.5 8a8.5 8.5 0 10-2.38 7.41" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M20.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </button>
+          <button class="ghost-icon" :title="t('components.skill.repos.open')"
+            :data-tooltip="t('components.skill.repos.open')" @click="openRepoModal">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 5h14v6H5zM7 13h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M12 7.5v1M12 15.5v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
+
+        </div>
+      </div>
 
       <section class="skill-list-section">
         <div v-if="loading" class="skill-empty">{{ t('components.skill.list.loading') }}</div>
@@ -582,7 +592,7 @@ onMounted(() => {
   margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
+  gap: 12px;
 }
 
 .skill-card {
@@ -714,5 +724,16 @@ html.dark .skill-card-eyebrow {
   to {
     transform: rotate(360deg);
   }
+}
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 12px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

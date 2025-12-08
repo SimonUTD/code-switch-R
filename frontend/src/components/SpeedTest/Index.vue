@@ -1,6 +1,30 @@
 <template>
   <PageLayout :eyebrow="t('speedtest.hero.eyebrow')" :title="t('speedtest.hero.title')">
     <div style="display: flex; flex-direction: column; gap: var(--spacing-section);">
+      <div class="section-header">
+        <div class="tab-group-container">
+          <span class="list-title">
+            {{ t('speedtest.endpoints', { count: endpointCount }) }}
+          </span>
+        </div>
+
+        <div class="section-controls">
+
+          <div class="divider-vertical"></div>
+          <button class="test-btn" :class="{ testing: isTesting }" @click="runTest"
+            :disabled="isTesting || endpointCount === 0">
+            <svg v-if="!isTesting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+            {{ isTesting ? t('speedtest.testing') : t('speedtest.start') }}
+          </button>
+
+        </div>
+      </div>
       <!-- URL Input -->
       <div class="input-section">
         <input v-model="newUrl" type="url" class="url-input" :placeholder="t('speedtest.placeholder')"
@@ -11,24 +35,6 @@
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
           {{ t('speedtest.add') }}
-        </button>
-      </div>
-
-      <!-- Endpoint List Header -->
-      <div class="list-header">
-        <span class="list-title">
-          {{ t('speedtest.endpoints', { count: endpointCount }) }}
-        </span>
-        <button class="test-btn" :class="{ testing: isTesting }" @click="runTest"
-          :disabled="isTesting || endpointCount === 0">
-          <svg v-if="!isTesting" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-          </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 6v6l4 2"></path>
-          </svg>
-          {{ isTesting ? t('speedtest.testing') : t('speedtest.start') }}
         </button>
       </div>
 
@@ -295,18 +301,21 @@ onMounted(() => {
 .input-section {
   display: flex;
   gap: 12px;
+  align-items: center;
   /* margin-bottom: 24px; */
 }
 
 .url-input {
   flex: 1;
-  padding: 12px 16px;
+  height: 44px;
+  padding: 0 16px;
   border: 1px solid var(--mac-border);
   border-radius: 12px;
   font-size: 0.9rem;
   background: var(--mac-surface);
   color: var(--mac-text);
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .url-input:focus {
@@ -319,8 +328,10 @@ onMounted(() => {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 12px 20px;
+  height: 44px;
+  padding: 0 20px;
   border: 1px solid var(--mac-border);
   border-radius: 12px;
   background: var(--mac-surface);
@@ -330,6 +341,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .add-btn:hover:not(:disabled) {
@@ -409,7 +421,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 24px;
+  /* margin-bottom: 24px; */
 }
 
 .endpoint-card {
@@ -529,5 +541,16 @@ onMounted(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+}
+
+.section-header {
+  background: var(--mac-surface);
+  padding: 8px 12px;
+  border-radius: 12px;
+  /* 把整个 Header 做成一个条状容器 */
+  border: 1px solid var(--mac-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>
