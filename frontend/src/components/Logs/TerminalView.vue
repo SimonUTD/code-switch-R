@@ -370,9 +370,4 @@ onUnmounted(() => {
   color: #d4d4d8;
   flex: 1;
 }
-
-/* 覆盖默认主题样式（在终端容器内） */
-.terminal-container * {
-  color: inherit;
-}
 </style>

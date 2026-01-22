@@ -345,8 +345,4 @@ onUnmounted(() => {
   flex: 1;
   white-space: pre-wrap;
 }
-
-.terminal-container * {
-  color: inherit;
-}
 </style>
