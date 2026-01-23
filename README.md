@@ -32,7 +32,7 @@
 
 | MITM | MITM规则 |
 |---|---|
-| ![MITM](resources/images/mitm.png) | ![MITM规则](resources/images/mitm_rule.png) |
+| ![MITM](resources/images/mitm.jpg) | ![MITM规则](resources/images/mitm_rule.jpg) |
 
 ## 📚 文档
 
