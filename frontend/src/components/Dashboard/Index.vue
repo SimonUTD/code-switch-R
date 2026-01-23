@@ -467,6 +467,15 @@ const chartData = computed(() => {
         yAxisID: 'yCost',
       },
       {
+        label: t('components.main.heatmap.metrics.requests'),
+        data: series.map((item) => item.total_requests ?? 0),
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.18)',
+        tension: 0.25,
+        fill: false,
+        yAxisID: 'yRequests',
+      },
+      {
         label: t('components.logs.tokenLabels.input'),
         data: series.map((item) => item.input_tokens ?? 0),
         borderColor: '#34d399',
@@ -534,6 +543,13 @@ const chartOptions: ChartOptions<'line'> = {
       beginAtZero: true,
       ticks: { color: '#94a3b8' },
       grid: { color: 'rgba(148, 163, 184, 0.2)' },
+    },
+    yRequests: {
+      position: 'left',
+      offset: true,
+      beginAtZero: true,
+      grid: { drawOnChartArea: false },
+      ticks: { color: '#94a3b8', precision: 0 },
     },
     yCost: {
       position: 'right',

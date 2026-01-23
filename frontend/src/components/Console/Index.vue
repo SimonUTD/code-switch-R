@@ -293,8 +293,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 5rem 0;
-  color: #3f3f46;
-  opacity: 0.5;
+  color: #a1a1aa;
+  opacity: 0.9;
 }
 
 .log-line {
@@ -311,8 +311,9 @@ onUnmounted(() => {
 }
 
 .log-timestamp {
-  color: #52525b;
+  color: #94a3b8;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
   user-select: none;
   min-width: 130px;
 }

@@ -657,7 +657,8 @@ html.dark .mac-sidebar-item:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 0 0 auto;
+  /* 让热力图在宽屏时自动“拉伸填充”，窄屏不足时仍可横向滚动 */
+  flex: 1 1 0;
   min-width: 14px;
 }
 
