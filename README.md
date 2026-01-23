@@ -26,13 +26,13 @@
 
 ## 🖼️ 界面预览
 
-| 亮色主界面 | 暗色主界面 |
+| 主界面 | 主界面 |
 |---|---|
-| ![亮色主界面](resources/images/code-switch.png) | ![暗色主界面](resources/images/code-swtich-dark.png) |
+| ![主界面](resources/images/dashboard.jpg) | ![主界面](resources/images/dashboard2.jpg) |
 
-| 日志亮色 | 日志暗色 |
+| MITM | MITM规则 |
 |---|---|
-| ![日志亮色](resources/images/code-switch-logs.png) | ![日志暗色](resources/images/code-switch-logs-dark.png) |
+| ![MITM](resources/images/mitm.png) | ![MITM规则](resources/images/mitm_rule.png) |
 
 ## 📚 文档
 
