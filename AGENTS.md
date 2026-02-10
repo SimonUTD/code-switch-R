@@ -12,6 +12,10 @@ OUTPUT_LANGUAGE: 简体中文
 - Go 测试：`GOCACHE=/tmp/go-build-cache GOMODCACHE=/tmp/go-mod-cache go test ./...`
 - 前端构建：`cd frontend && pnpm -s build`
 
+## 环境要求
+
+- Node.js：Vite 7 需要 `>=20.19` 或 `>=22.12`（Windows 上若报 Node 版本过低，请先升级再跑 `wails3 dev`）
+
 ## 版本与发布
 
 - 版本号：`version_service.go` 的 `AppVersion`

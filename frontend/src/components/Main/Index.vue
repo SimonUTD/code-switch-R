@@ -1213,22 +1213,53 @@ const currencyFormatter = computed(() =>
 	const normalizeProviderKey = (value: string) => value?.trim().toLowerCase() ?? ''
 
 // 本地 GeminiProvider 类型定义（避免依赖 CI 生成的 bindings）
-interface GeminiProvider {
-  id: string
-  name: string
-  websiteUrl?: string
-  apiKeyUrl?: string
-  baseUrl?: string
-  apiKey?: string
-  model?: string
-  description?: string
-  category?: string
-  partnerPromotionKey?: string
-  enabled: boolean
-  level?: number // 优先级分组 (1-10, 默认 1)
-  envConfig?: Record<string, string>
-  settingsConfig?: Record<string, any>
-}
+	interface GeminiProvider {
+	  id: string
+	  name: string
+	  websiteUrl?: string
+	  apiKeyUrl?: string
+	  baseUrl?: string
+	  apiKey?: string
+	  model?: string
+	  description?: string
+	  category?: string
+	  partnerPromotionKey?: string
+	  enabled: boolean
+	  level?: number // 优先级分组 (1-10, 默认 1)
+	  envConfig?: Record<string, string>
+	  settingsConfig?: Record<string, any>
+	}
+
+	type LooseStringMap = Record<string, string | undefined>
+
+	const normalizeStringMap = (input?: LooseStringMap): Record<string, string> | undefined => {
+	  if (!input) return undefined
+	  const out: Record<string, string> = {}
+	  for (const [key, value] of Object.entries(input)) {
+	    if (typeof value !== 'string') continue
+	    const normalizedKey = key.trim()
+	    if (normalizedKey) out[normalizedKey] = value
+	  }
+	  return Object.keys(out).length ? out : undefined
+	}
+
+	const normalizeGeminiProviders = (providers: any[]): GeminiProvider[] =>
+	  (providers ?? []).map((provider: any) => ({
+	    id: provider?.id ?? '',
+	    name: provider?.name ?? '',
+	    websiteUrl: provider?.websiteUrl,
+	    apiKeyUrl: provider?.apiKeyUrl,
+	    baseUrl: provider?.baseUrl,
+	    apiKey: provider?.apiKey,
+	    model: provider?.model,
+	    description: provider?.description,
+	    category: provider?.category,
+	    partnerPromotionKey: provider?.partnerPromotionKey,
+	    enabled: !!provider?.enabled,
+	    level: provider?.level,
+	    envConfig: normalizeStringMap(provider?.envConfig),
+	    settingsConfig: provider?.settingsConfig,
+	  }))
 
 const tabs = [
   { id: 'claude', label: 'Claude Code' },
@@ -1347,8 +1378,8 @@ const persistProviders = async (tabId: ProviderTab) => {
       }
 
       // 4. 刷新缓存以获取最新的 ID
-      const updatedProviders = await GetGeminiProviders()
-      geminiProvidersCache.value = updatedProviders
+	      const updatedProviders = normalizeGeminiProviders(await GetGeminiProviders())
+	      geminiProvidersCache.value = updatedProviders
 
       // 5. 保存排序：按 cards.gemini 的顺序构建 ID 列表
       const orderedIds: string[] = []
@@ -1358,11 +1389,11 @@ const persistProviders = async (tabId: ProviderTab) => {
           orderedIds.push(provider.id)
         }
       }
-      if (orderedIds.length > 0) {
-        await ReorderGeminiProviders(orderedIds)
-        // 重新获取排序后的数据
-        geminiProvidersCache.value = await GetGeminiProviders()
-      }
+	      if (orderedIds.length > 0) {
+	        await ReorderGeminiProviders(orderedIds)
+	        // 重新获取排序后的数据
+	        geminiProvidersCache.value = normalizeGeminiProviders(await GetGeminiProviders())
+	      }
     } else {
       await SaveProviders(tabId, serializeProviders(cards[tabId]))
     }
@@ -1382,13 +1413,13 @@ const loadProvidersFromDisk = async () => {
       if (tab === 'others') {
         // 'others' Tab: 先加载自定义 CLI 工具列表，再加载每个工具的 providers
         await loadCustomCliTools()
-      } else if (tab === 'gemini') {
-        // Gemini 使用独立的加载逻辑
-        const geminiProviders = await GetGeminiProviders()
-        geminiProvidersCache.value = geminiProviders
-        cards.gemini.splice(0, cards.gemini.length, ...geminiProviders.map(geminiToCard))
-        sortProvidersByLevel(cards.gemini)  // 初始排序：启用优先，Level 升序
-      } else {
+	      } else if (tab === 'gemini') {
+	        // Gemini 使用独立的加载逻辑
+	        const geminiProviders = normalizeGeminiProviders(await GetGeminiProviders())
+	        geminiProvidersCache.value = geminiProviders
+	        cards.gemini.splice(0, cards.gemini.length, ...geminiProviders.map(geminiToCard))
+	        sortProvidersByLevel(cards.gemini)  // 初始排序：启用优先，Level 升序
+	      } else {
         const saved = await LoadProviders(tab)
         if (Array.isArray(saved)) {
           replaceProviders(tab, saved as AutomationCard[])

@@ -6,6 +6,7 @@
 - **全局日志开关**：设置中新增“记录日志”，默认关闭；关闭后不落盘任何日志/历史（request_log、MITM、console、监控、测速等），降低写盘与能耗
 - **UI**：MCP 列表 / 测速 URL / 可用性监控 / 供应商列表改为表格布局，节省屏幕空间
 - **看板折线图**：新增范围切换（当天/3/7/14天），默认 7 天；消费明细弹窗随范围刷新
+- **Windows 编译**：修复 Wails bindings 生成差异导致的 TypeScript 类型不兼容（Gemini Provider envConfig / Prompts map）
 
 ---
 

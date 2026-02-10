@@ -25,7 +25,7 @@ const platforms: { id: Platform; name: string }[] = [
 ]
 
 const activePlatform = ref<Platform>('claude')
-const prompts = ref<Record<string, Prompt>>({})
+const prompts = ref<Record<string, Prompt | undefined>>({})
 const loading = ref(false)
 const showModal = ref(false)
 const editingPrompt = ref<Prompt | null>(null)
@@ -41,7 +41,7 @@ const formData = ref({
   enabled: false
 })
 
-const promptList = computed(() => Object.values(prompts.value))
+const promptList = computed(() => Object.values(prompts.value).filter((item): item is Prompt => !!item))
 const enabledPrompt = computed(() => promptList.value.find(p => p.enabled))
 const promptCount = computed(() => promptList.value.length)
 
