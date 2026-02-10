@@ -70,8 +70,9 @@ export type LogStats = {
   series: LogStatsSeries[]
 }
 
-export const fetchLogStats = async (platform: LogPlatform | '' = ''): Promise<LogStats> => {
-  return Call.ByName('codeswitch/services.LogService.StatsSince', platform)
+export const fetchLogStats = async (platform: LogPlatform | '' = '', days = 1): Promise<LogStats> => {
+  const safeDays = Number.isFinite(days) ? Math.max(1, Math.floor(days)) : 1
+  return Call.ByName('codeswitch/services.LogService.StatsSinceRange', platform, safeDays)
 }
 
 export type ProviderDailyStat = {
@@ -90,8 +91,10 @@ export type ProviderDailyStat = {
 
 export const fetchProviderDailyStats = async (
   platform: LogPlatform | '' = '',
+  days = 1,
 ): Promise<ProviderDailyStat[]> => {
-  return Call.ByName('codeswitch/services.LogService.ProviderDailyStats', platform)
+  const safeDays = Number.isFinite(days) ? Math.max(1, Math.floor(days)) : 1
+  return Call.ByName('codeswitch/services.LogService.ProviderStatsSinceRange', platform, safeDays)
 }
 
 export type HeatmapStat = {

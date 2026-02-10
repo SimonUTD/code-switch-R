@@ -8,8 +8,11 @@ export type McpServer = {
   type: McpServerType
   command?: string
   args: string[]
+  cwd?: string
   env: Record<string, string>
   url?: string
+  headers?: Record<string, string>
+  startup_timeout_sec?: number
   website?: string
   tips?: string
   enable_platform: McpPlatform[]

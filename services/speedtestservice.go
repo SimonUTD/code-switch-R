@@ -328,6 +328,11 @@ func (s *SpeedTestService) UpdateEndpointTestResult(url string, latency *uint64)
 		return fmt.Errorf("URL 不能为空")
 	}
 
+	// 全局日志关闭：不落盘测速结果（避免写盘唤醒/能耗）。
+	if !IsLoggingEnabled() {
+		return nil
+	}
+
 	// 加载现有端点
 	records, err := s.LoadEndpoints()
 	if err != nil {

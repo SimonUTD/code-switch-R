@@ -58,8 +58,11 @@ type MCPServer struct {
 	Type                string            `json:"type"`
 	Command             string            `json:"command,omitempty"`
 	Args                []string          `json:"args,omitempty"`
+	Cwd                 string            `json:"cwd,omitempty"`
 	Env                 map[string]string `json:"env,omitempty"`
 	URL                 string            `json:"url,omitempty"`
+	Headers             map[string]string `json:"headers,omitempty"`
+	StartupTimeoutSec   int               `json:"startup_timeout_sec,omitempty"`
 	Website             string            `json:"website,omitempty"`
 	Tips                string            `json:"tips,omitempty"`
 	EnablePlatform      []string          `json:"enable_platform"`
@@ -73,8 +76,11 @@ type rawMCPServer struct {
 	Type           string            `json:"type"`
 	Command        string            `json:"command,omitempty"`
 	Args           []string          `json:"args,omitempty"`
+	Cwd            string            `json:"cwd,omitempty"`
 	Env            map[string]string `json:"env,omitempty"`
 	URL            string            `json:"url,omitempty"`
+	Headers        map[string]string `json:"headers,omitempty"`
+	StartupTimeoutSec int            `json:"startup_timeout_sec,omitempty"`
 	Website        string            `json:"website,omitempty"`
 	Tips           string            `json:"tips,omitempty"`
 	EnablePlatform []string          `json:"enable_platform"`
@@ -101,8 +107,10 @@ type claudeDesktopServer struct {
 	Type    string            `json:"type,omitempty"`
 	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
+	Cwd     string            `json:"cwd,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
 	URL     string            `json:"url,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 func (ms *MCPService) ListServers() ([]MCPServer, error) {
@@ -134,8 +142,11 @@ func (ms *MCPService) ListServers() ([]MCPServer, error) {
 			Type:            typ,
 			Command:         strings.TrimSpace(entry.Command),
 			Args:            cloneArgs(entry.Args),
+			Cwd:             strings.TrimSpace(entry.Cwd),
 			Env:             cloneEnv(entry.Env),
 			URL:             strings.TrimSpace(entry.URL),
+			Headers:         cloneStrMap(entry.Headers),
+			StartupTimeoutSec: entry.StartupTimeoutSec,
 			Website:         strings.TrimSpace(entry.Website),
 			Tips:            strings.TrimSpace(entry.Tips),
 			EnablePlatform:  platforms,
@@ -143,7 +154,14 @@ func (ms *MCPService) ListServers() ([]MCPServer, error) {
 			EnabledInCodex:  containsNormalized(codexEnabled, name),
 			EnabledInGemini: containsNormalized(geminiEnabled, name),
 		}
-		server.MissingPlaceholders = detectPlaceholders(server.URL, server.Args)
+		server.MissingPlaceholders = detectPlaceholders(
+			server.URL,
+			server.Command,
+			server.Args,
+			server.Cwd,
+			server.Env,
+			server.Headers,
+		)
 		servers = append(servers, server)
 	}
 
@@ -166,8 +184,14 @@ func (ms *MCPService) SaveServers(servers []MCPServer) error {
 		platforms := normalizePlatforms(server.EnablePlatform)
 		args := cleanArgs(server.Args)
 		env := cleanEnv(server.Env)
+		headers := cleanHeaders(server.Headers)
 		command := strings.TrimSpace(server.Command)
 		url := strings.TrimSpace(server.URL)
+		cwd := strings.TrimSpace(server.Cwd)
+		startupTimeoutSec := server.StartupTimeoutSec
+		if startupTimeoutSec < 0 {
+			return fmt.Errorf("%s startup_timeout_sec 不能为负数", name)
+		}
 		if typ == "stdio" && command == "" {
 			return fmt.Errorf("%s 需要提供 command", name)
 		}
@@ -179,8 +203,11 @@ func (ms *MCPService) SaveServers(servers []MCPServer) error {
 			Type:            typ,
 			Command:         command,
 			Args:            args,
+			Cwd:             cwd,
 			Env:             env,
 			URL:             url,
+			Headers:         headers,
+			StartupTimeoutSec: startupTimeoutSec,
 			Website:         strings.TrimSpace(server.Website),
 			Tips:            strings.TrimSpace(server.Tips),
 			EnablePlatform:  platforms,
@@ -192,13 +219,16 @@ func (ms *MCPService) SaveServers(servers []MCPServer) error {
 			Type:           typ,
 			Command:        command,
 			Args:           args,
+			Cwd:            cwd,
 			Env:            env,
 			URL:            url,
+			Headers:        headers,
+			StartupTimeoutSec: startupTimeoutSec,
 			Website:        normalized[i].Website,
 			Tips:           normalized[i].Tips,
 			EnablePlatform: platforms,
 		}
-		placeholders := detectPlaceholders(url, args)
+		placeholders := detectPlaceholders(url, command, args, cwd, env, headers)
 		normalized[i].MissingPlaceholders = placeholders
 		if len(placeholders) > 0 {
 			normalized[i].EnablePlatform = []string{}
@@ -282,6 +312,22 @@ func (ms *MCPService) loadConfig() (map[string]rawMCPServer, error) {
 		return nil, err
 	}
 
+	if imported, err := ms.importFromCodex(servers); err == nil {
+		if ms.mergeImportedServers(servers, imported) {
+			changed = true
+		}
+	} else {
+		return nil, err
+	}
+
+	if imported, err := ms.importFromGemini(servers); err == nil {
+		if ms.mergeImportedServers(servers, imported) {
+			changed = true
+		}
+	} else {
+		return nil, err
+	}
+
 	if ensureBuiltInServers(servers, deletedBuiltins) {
 		changed = true
 	}
@@ -345,11 +391,167 @@ func (ms *MCPService) importFromClaude(existing map[string]rawMCPServer) (map[st
 			Type:           typ,
 			Command:        strings.TrimSpace(entry.Command),
 			Args:           cleanArgs(entry.Args),
+			Cwd:            strings.TrimSpace(entry.Cwd),
 			Env:            cleanEnv(entry.Env),
 			URL:            strings.TrimSpace(entry.URL),
+			Headers:        cleanHeaders(entry.Headers),
 			EnablePlatform: []string{platClaudeCode},
 		}
 	}
+	return result, nil
+}
+
+func (ms *MCPService) importFromCodex(existing map[string]rawMCPServer) (map[string]rawMCPServer, error) {
+	path, err := codexConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return map[string]rawMCPServer{}, nil
+		}
+		return nil, err
+	}
+	if len(data) == 0 {
+		return map[string]rawMCPServer{}, nil
+	}
+
+	var payload codexMcpFilePayload
+	if err := toml.Unmarshal(data, &payload); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]rawMCPServer, len(payload.Servers))
+	for name, cfg := range payload.Servers {
+		trimmedName := strings.TrimSpace(name)
+		if trimmedName == "" {
+			continue
+		}
+		if _, exists := existing[trimmedName]; exists {
+			continue
+		}
+
+		typeHint := getString(cfg["type"])
+		url := getString(cfg["url"])
+		command := getString(cfg["command"])
+		if strings.TrimSpace(typeHint) == "" {
+			if strings.TrimSpace(url) != "" {
+				typeHint = "http"
+			} else {
+				typeHint = "stdio"
+			}
+		}
+		typ := normalizeServerType(typeHint)
+		if typ == "http" && strings.TrimSpace(url) == "" {
+			continue
+		}
+		if typ == "stdio" && strings.TrimSpace(command) == "" {
+			continue
+		}
+
+		args := cleanArgs(getStringSlice(cfg["args"]))
+		env := cleanEnv(getStringMap(cfg["env"]))
+		headers := cleanHeaders(getStringMap(cfg["headers"]))
+		cwd := strings.TrimSpace(getString(cfg["cwd"]))
+		startupTimeoutSec := getInt(cfg["startup_timeout_sec"])
+		if startupTimeoutSec < 0 {
+			startupTimeoutSec = 0
+		}
+
+		result[trimmedName] = rawMCPServer{
+			Type:             typ,
+			Command:          strings.TrimSpace(command),
+			Args:             args,
+			Cwd:              cwd,
+			Env:              env,
+			URL:              strings.TrimSpace(url),
+			Headers:          headers,
+			StartupTimeoutSec: startupTimeoutSec,
+			EnablePlatform:   []string{platCodex},
+		}
+	}
+
+	return result, nil
+}
+
+func (ms *MCPService) importFromGemini(existing map[string]rawMCPServer) (map[string]rawMCPServer, error) {
+	path, err := geminiConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return map[string]rawMCPServer{}, nil
+		}
+		return nil, err
+	}
+	if len(data) == 0 {
+		return map[string]rawMCPServer{}, nil
+	}
+
+	var payload geminiMcpFilePayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]rawMCPServer, len(payload.Servers))
+	for name, raw := range payload.Servers {
+		trimmedName := strings.TrimSpace(name)
+		if trimmedName == "" {
+			continue
+		}
+		if _, exists := existing[trimmedName]; exists {
+			continue
+		}
+
+		var cfg map[string]any
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			continue
+		}
+
+		httpURL := getString(cfg["httpUrl"])
+		url := getString(cfg["url"])
+		if httpURL != "" {
+			url = httpURL
+		}
+
+		typeHint := getString(cfg["type"])
+		if strings.TrimSpace(typeHint) == "" {
+			if strings.TrimSpace(url) != "" {
+				typeHint = "http"
+			} else {
+				typeHint = "stdio"
+			}
+		}
+		typ := normalizeServerType(typeHint)
+
+		command := getString(cfg["command"])
+		args := cleanArgs(getStringSlice(cfg["args"]))
+		env := cleanEnv(getStringMap(cfg["env"]))
+		headers := cleanHeaders(getStringMap(cfg["headers"]))
+		cwd := strings.TrimSpace(getString(cfg["cwd"]))
+
+		if typ == "http" && strings.TrimSpace(url) == "" {
+			continue
+		}
+		if typ == "stdio" && strings.TrimSpace(command) == "" {
+			continue
+		}
+
+		result[trimmedName] = rawMCPServer{
+			Type:           typ,
+			Command:        strings.TrimSpace(command),
+			Args:           args,
+			Cwd:            cwd,
+			Env:            env,
+			URL:            strings.TrimSpace(url),
+			Headers:        headers,
+			EnablePlatform: []string{platGemini},
+		}
+	}
+
 	return result, nil
 }
 
@@ -375,8 +577,10 @@ func (ms *MCPService) saveStore(servers map[string]rawMCPServer, deletedBuiltins
 
 func normalizeServerType(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "http":
+	case "http", "sse", "streamable_http", "streamable-http":
 		return "http"
+	case "stdio":
+		return "stdio"
 	default:
 		return "stdio"
 	}
@@ -419,11 +623,13 @@ func unionPlatforms(primary, secondary []string) []string {
 func normalizeRawEntry(entry rawMCPServer) rawMCPServer {
 	entry.Type = normalizeServerType(entry.Type)
 	entry.Command = strings.TrimSpace(entry.Command)
+	entry.Cwd = strings.TrimSpace(entry.Cwd)
 	entry.URL = strings.TrimSpace(entry.URL)
 	entry.Website = strings.TrimSpace(entry.Website)
 	entry.Tips = strings.TrimSpace(entry.Tips)
 	entry.Args = cleanArgs(entry.Args)
 	entry.Env = cleanEnv(entry.Env)
+	entry.Headers = cleanHeaders(entry.Headers)
 	entry.EnablePlatform = normalizePlatforms(entry.EnablePlatform)
 	return entry
 }
@@ -438,6 +644,17 @@ func cloneArgs(values []string) []string {
 }
 
 func cloneEnv(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return map[string]string{}
+	}
+	dup := make(map[string]string, len(values))
+	for k, v := range values {
+		dup[k] = v
+	}
+	return dup
+}
+
+func cloneStrMap(values map[string]string) map[string]string {
 	if len(values) == 0 {
 		return map[string]string{}
 	}
@@ -464,6 +681,21 @@ func cleanArgs(values []string) []string {
 }
 
 func cleanEnv(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return map[string]string{}
+	}
+	result := make(map[string]string, len(values))
+	for key, value := range values {
+		trimmedKey := strings.TrimSpace(key)
+		if trimmedKey == "" {
+			continue
+		}
+		result[trimmedKey] = strings.TrimSpace(value)
+	}
+	return result
+}
+
+func cleanHeaders(values map[string]string) map[string]string {
 	if len(values) == 0 {
 		return map[string]string{}
 	}
@@ -593,11 +825,20 @@ func ensureBuiltInServers(target map[string]rawMCPServer, deletedBuiltins []stri
 			if len(merged.Args) == 0 {
 				merged.Args = builtIn.Args
 			}
+			if merged.Cwd == "" {
+				merged.Cwd = builtIn.Cwd
+			}
 			if len(merged.Env) == 0 {
 				merged.Env = builtIn.Env
 			}
 			if merged.URL == "" {
 				merged.URL = builtIn.URL
+			}
+			if len(merged.Headers) == 0 {
+				merged.Headers = builtIn.Headers
+			}
+			if merged.StartupTimeoutSec == 0 {
+				merged.StartupTimeoutSec = builtIn.StartupTimeoutSec
 			}
 			if merged.Website == "" {
 				merged.Website = builtIn.Website
@@ -715,10 +956,16 @@ func buildClaudeDesktopEntry(server MCPServer) claudeDesktopServer {
 	entry := claudeDesktopServer{Type: server.Type}
 	if server.Type == "http" {
 		entry.URL = server.URL
+		if len(server.Headers) > 0 {
+			entry.Headers = server.Headers
+		}
 	} else {
 		entry.Command = server.Command
 		if len(server.Args) > 0 {
 			entry.Args = server.Args
+		}
+		if server.Cwd != "" {
+			entry.Cwd = server.Cwd
 		}
 		if len(server.Env) > 0 {
 			entry.Env = server.Env
@@ -732,14 +979,23 @@ func buildCodexEntry(server MCPServer) map[string]any {
 	entry["type"] = server.Type
 	if server.Type == "http" {
 		entry["url"] = server.URL
+		if len(server.Headers) > 0 {
+			entry["headers"] = server.Headers
+		}
 	} else {
 		entry["command"] = server.Command
 		if len(server.Args) > 0 {
 			entry["args"] = server.Args
 		}
+		if server.Cwd != "" {
+			entry["cwd"] = server.Cwd
+		}
 		if len(server.Env) > 0 {
 			entry["env"] = server.Env
 		}
+	}
+	if server.StartupTimeoutSec > 0 {
+		entry["startup_timeout_sec"] = server.StartupTimeoutSec
 	}
 	return entry
 }
@@ -750,10 +1006,16 @@ func buildGeminiEntry(server MCPServer) map[string]any {
 	entry := make(map[string]any)
 	if server.Type == "http" {
 		entry["httpUrl"] = server.URL
+		if len(server.Headers) > 0 {
+			entry["headers"] = server.Headers
+		}
 	} else {
 		entry["command"] = server.Command
 		if len(server.Args) > 0 {
 			entry["args"] = server.Args
+		}
+		if server.Cwd != "" {
+			entry["cwd"] = server.Cwd
 		}
 		if len(server.Env) > 0 {
 			entry["env"] = server.Env
@@ -794,11 +1056,19 @@ func geminiConfigPath() (string, error) {
 	return filepath.Join(dir, geminiConfigFile), nil
 }
 
-func detectPlaceholders(url string, args []string) []string {
+func detectPlaceholders(url string, command string, args []string, cwd string, env map[string]string, headers map[string]string) []string {
 	set := make(map[string]struct{})
 	collectPlaceholders(set, url)
+	collectPlaceholders(set, command)
+	collectPlaceholders(set, cwd)
 	for _, arg := range args {
 		collectPlaceholders(set, arg)
+	}
+	for _, value := range env {
+		collectPlaceholders(set, value)
+	}
+	for _, value := range headers {
+		collectPlaceholders(set, value)
 	}
 	if len(set) == 0 {
 		return []string{}
@@ -821,5 +1091,89 @@ func collectPlaceholders(set map[string]struct{}, value string) {
 			continue
 		}
 		set[match[1]] = struct{}{}
+	}
+}
+
+func getString(value any) string {
+	if value == nil {
+		return ""
+	}
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	default:
+		return strings.TrimSpace(fmt.Sprint(v))
+	}
+}
+
+func getStringSlice(value any) []string {
+	if value == nil {
+		return []string{}
+	}
+	switch v := value.(type) {
+	case []string:
+		return v
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			if item == nil {
+				continue
+			}
+			trimmed := strings.TrimSpace(fmt.Sprint(item))
+			if trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+		return out
+	default:
+		return []string{}
+	}
+}
+
+func getStringMap(value any) map[string]string {
+	if value == nil {
+		return map[string]string{}
+	}
+	if m, ok := value.(map[string]string); ok {
+		return m
+	}
+	raw, ok := value.(map[string]any)
+	if !ok {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(raw))
+	for k, v := range raw {
+		key := strings.TrimSpace(k)
+		if key == "" {
+			continue
+		}
+		out[key] = strings.TrimSpace(fmt.Sprint(v))
+	}
+	return out
+}
+
+func getInt(value any) int {
+	if value == nil {
+		return 0
+	}
+	switch v := value.(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	case float32:
+		return int(v)
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return 0
+		}
+		var out int
+		_, _ = fmt.Sscanf(trimmed, "%d", &out)
+		return out
+	default:
+		return 0
 	}
 }

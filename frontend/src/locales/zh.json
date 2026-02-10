@@ -68,8 +68,15 @@
     "sections": {
       "system": { "title": "系统状态" },
       "heatmap": { "title": "热力图（最近 14 天 · 按小时）" },
-      "usage": { "title": "使用统计（今日）" },
+      "usage": { "title": "使用统计" },
       "monitor": { "title": "监控情况（实时）" }
+    },
+    "usageRange": {
+      "label": "统计范围",
+      "today": "当天",
+      "days3": "3天",
+      "days7": "7天",
+      "days14": "14天"
     },
     "system": {
       "relay": "代理中继",
@@ -123,6 +130,11 @@
     "nextRefresh": "下次刷新",
     "notMonitored": "未监控",
     "noProviders": "暂无供应商，请先添加供应商配置",
+    "table": {
+      "provider": "供应商",
+      "config": "配置",
+      "timeline": "历史"
+    },
     "stats": {
       "operational": "正常",
       "degraded": "延迟",
@@ -319,6 +331,11 @@
         "ariaLabel": "AI 供应商切换",
         "addCard": "新增供应商卡片",
         "refresh": "刷新数据"
+      },
+      "table": {
+        "provider": "供应商",
+        "metrics": "指标",
+        "actions": "操作"
       },
       "relayToggle": {
         "label": "Claude proxy",
@@ -602,7 +619,8 @@
         "cache": "缓存命中",
         "cacheHint": "响应中的读取命中数",
         "costHint": "近 24 小时总花费",
-        "todayScope": "今日 · {date}"
+        "todayScope": "今日 · {date}",
+        "rangeScope": "近 {days} 天 · {start} ~ {end}"
       },
       "table": {
         "time": "时间",
@@ -628,8 +646,8 @@
       "nextRefresh": "距离下次刷新 {seconds}s",
       "query": "查询",
       "costDetail": {
-        "title": "今日消费明细",
-        "empty": "今日暂无消费记录"
+        "title": "消费明细",
+        "empty": "暂无消费记录"
       },
       "detail": {
         "title": "请求详情",
@@ -682,6 +700,8 @@
         "switchNotifyHint": "供应商切换或拉黑时发送系统通知",
         "roundRobin": "同 Level 轮询",
         "roundRobinHint": "启用后同 Level 的供应商轮流处理请求，关闭则始终从第一个开始",
+        "enableLogging": "记录日志",
+        "enableLoggingHint": "关闭后将不记录任何日志（请求日志、MITM 日志、程序日志等），以降低写盘与能耗",
         "autoUpdate": "自动更新",
         "lastCheck": "上次检查",
         "currentVersion": "当前版本",
@@ -791,7 +811,7 @@
       "import": {
         "title": "批量导入 MCP 服务器",
         "inputDesc": "粘贴 MCP 配置 JSON，支持 Claude Desktop 格式、数组格式或服务器映射格式。",
-        "placeholder": "粘贴 Claude Desktop 或标准 MCP 配置 JSON...",
+        "placeholder": "{\n  \"mcpServers\": {\n    \"local-server\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-xxx\"],\n      \"env\": { \"FOO\": \"bar\" },\n      \"cwd\": \"/path/to/workdir\",\n      \"startup_timeout_sec\": 30\n    },\n    \"remote-server\": {\n      \"type\": \"http\",\n      \"url\": \"https://example.com/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer YOUR_API_KEY\"\n      }\n    }\n  }\n}",
         "next": "下一步",
         "parsing": "解析中...",
         "back": "上一步",
@@ -822,6 +842,7 @@
         "empty": "暂无 MCP 服务器，点击下方按钮快速创建",
         "loadError": "加载 MCP 服务器失败",
         "saveError": "保存 MCP 服务器失败",
+        "endpoint": "命令 / URL",
         "edit": "编辑服务器",
         "delete": "删除服务器",
         "placeholderWarning": "请先替换变量：{vars}"
@@ -852,7 +873,17 @@
         "command": "执行命令",
         "args": "命令参数",
         "argsHint": "每行一个参数，保存时会自动按顺序传入",
+        "cwd": "工作目录",
+        "cwdHint": "可选，仅 stdio 生效",
         "url": "服务地址",
+        "headers": "HTTP Headers",
+        "headersHint": "可选，仅 http 生效",
+        "headerKey": "Header",
+        "headerValue": "值",
+        "headerAdd": "新增 Header",
+        "headerRemove": "删除 Header",
+        "startupTimeout": "启动超时（秒）",
+        "startupTimeoutHint": "可选，Codex 使用 startup_timeout_sec",
         "website": "官网地址",
         "tips": "提示信息",
         "tipsHint": "例如：请前往 ref.tools 获取 API Key",
@@ -876,7 +907,10 @@
             "commandRequired": "stdio 类型需要 command",
             "urlRequired": "http 类型需要 url",
             "argsInvalid": "args 必须是字符串数组",
-            "envInvalid": "env 必须是对象，且所有值为字符串",
+            "envInvalid": "env 必须是对象，且值为基础类型",
+            "headersInvalid": "headers 必须是对象，且值为基础类型",
+            "cwdInvalid": "cwd 必须是字符串",
+            "startupTimeoutInvalid": "startup_timeout_sec 必须为非负数字",
             "applyFailed": "应用失败，请检查 JSON 内容"
           }
         },

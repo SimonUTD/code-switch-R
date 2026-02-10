@@ -502,10 +502,12 @@ func (m *MITMService) createHandler() http.Handler {
 		}
 
 		// Send to log channel (non-blocking)
-		select {
-		case m.logChan <- entry:
-		default:
-			// Channel full, skip
+		if IsLoggingEnabled() {
+			select {
+			case m.logChan <- entry:
+			default:
+				// Channel full, skip
+			}
 		}
 	})
 }

@@ -276,237 +276,237 @@
         </p>
       </div>
 
-      <div class="automation-list" @dragover.prevent>
-        <article
-          v-for="card in activeCards"
-          :key="card.id"
-          :ref="el => { if (card.name === highlightedProvider) scrollToCard(el as HTMLElement) }"
-          :class="[
-            'automation-card',
-            { dragging: draggingId === card.id },
-            { 'is-last-used': isLastUsedProvider(card.name) },
-            { 'is-highlighted': highlightedProvider === card.name }
-          ]"
-          draggable="true"
-          @dragstart="onDragStart(card.id)"
-          @dragend="onDragEnd"
-          @drop="onDrop(card.id)"
-        >
-          <!-- 正在使用标签 -->
-          <span v-if="isLastUsedProvider(card.name)" class="last-used-badge">
-            ✓ {{ t('components.main.providers.lastUsed') }}
-          </span>
-          <div class="card-leading">
-            <div class="card-icon" :style="{ backgroundColor: card.tint, color: card.accent }">
-              <span
-                v-if="!iconSvg(card.icon)"
-                class="icon-fallback"
+      <div class="automation-table-wrapper" @dragover.prevent>
+        <table class="automation-table">
+          <thead>
+            <tr>
+              <th class="col-provider">{{ t('components.main.table.provider') }}</th>
+              <th class="col-metrics">{{ t('components.main.table.metrics') }}</th>
+              <th class="col-actions">{{ t('components.main.table.actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="card in activeCards" :key="card.id">
+              <tr
+                :ref="el => { if (card.name === highlightedProvider) scrollToCard(el as HTMLElement) }"
+                :class="[
+                  'automation-row',
+                  { dragging: draggingId === card.id },
+                  { 'is-last-used': isLastUsedProvider(card.name) },
+                  { 'is-highlighted': highlightedProvider === card.name }
+                ]"
+                draggable="true"
+                @dragstart="onDragStart(card.id)"
+                @dragend="onDragEnd"
+                @drop="onDrop(card.id)"
+                @dragover.prevent
               >
-                {{ vendorInitials(card.name) }}
-              </span>
-              <span
-                v-else
-                class="icon-svg"
-                v-html="iconSvg(card.icon)"
-                aria-hidden="true"
-              ></span>
-            </div>
-            <div class="card-text">
-              <div class="card-title-row">
-                <p class="card-title">{{ card.name }}</p>
-                <!-- 当前使用徽章 -->
-                <span
-                  v-if="isDirectApplied(card) && !activeProxyState"
-                  class="current-use-badge"
-                >
-                  {{ t('components.main.directApply.currentBadge') }}
-                </span>
-                <!-- 连通性状态指示器 -->
-                <span
-                  v-if="card.availabilityMonitorEnabled"
-                  class="connectivity-dot"
-                  :class="getConnectivityIndicatorClass(card.id)"
-                  :title="getConnectivityTooltip(card.id)"
-                ></span>
-                <span v-if="card.level" class="level-badge scheduling-level" :class="`level-${card.level}`">
-                  L{{ card.level }}
-                </span>
-                <!-- 黑名单等级徽章（始终显示，包括 L0） -->
-                <span
-                  v-if="getProviderBlacklistStatus(card.name)"
-                  :class="[
-                    'blacklist-level-badge',
-                    `bl-level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`,
-                    { dark: resolvedTheme === 'dark' }
-                  ]"
-                  :title="t('components.main.blacklist.levelTitle', { level: getProviderBlacklistStatus(card.name)!.blacklistLevel })"
-                >
-                  BL{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                </span>
-                <button
-                  v-if="card.officialSite"
-                  class="card-site"
-                  type="button"
-                  @click.stop="openOfficialSite(card.officialSite)"
-                >
-                  {{ formatOfficialSite(card.officialSite) }}
-                </button>
-              </div>
-              <!-- <p class="card-subtitle">{{ card.apiUrl }}</p> -->
-              <p
-                v-for="stats in [providerStatDisplay(card.name)]"
-                :key="`metrics-${card.id}`"
-                class="card-metrics"
-              >
-                <template v-if="stats.state !== 'ready'">
-                  {{ stats.message }}
-                </template>
-                <template v-else>
-                  <span
-                    v-if="stats.successRateLabel"
-                    class="card-success-rate"
-                    :class="stats.successRateClass"
-                  >
-                    {{ stats.successRateLabel }}
-                  </span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span >{{ stats.requests }}</span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span>{{ stats.tokens }}</span>
-                  <span class="card-metric-separator" aria-hidden="true">·</span>
-                  <span>{{ stats.cost }}</span>
-                </template>
-              </p>
-              <!-- 黑名单横幅 -->
-              <div
-                v-if="getProviderBlacklistStatus(card.name)?.isBlacklisted"
-                :class="['blacklist-banner', { dark: resolvedTheme === 'dark' }]"
-              >
-                <div class="blacklist-info">
-                  <span class="blacklist-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
-                      <path
-                        d="M8 8l8 8"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                  </span>
-                  <!-- 等级徽章（L1-L5，黑色/红色） -->
-                  <span
-                    v-if="getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
-                    :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
-                  >
-                    L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                  </span>
-                  <span class="blacklist-text">
-                    {{ t('components.main.blacklist.blocked') }} |
-                    {{ t('components.main.blacklist.remaining') }}:
-                    {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
-                  </span>
-                </div>
-                <div class="blacklist-actions">
-                  <button
-                    class="unblock-btn primary"
-                    type="button"
-                    @click.stop="handleUnblockAndReset(card.name)"
-                    :title="t('components.main.blacklist.unblockAndResetHint')"
-                  >
-                    {{ t('components.main.blacklist.unblockAndReset') }}
-                  </button>
-                  <button
-                    class="unblock-btn secondary"
-                    type="button"
-                    @click.stop="handleResetLevel(card.name)"
-                    :title="t('components.main.blacklist.resetLevelHint')"
-                  >
-                    {{ t('components.main.blacklist.resetLevel') }}
-                  </button>
-                </div>
-              </div>
-              <!-- 等级徽章（未拉黑但有等级） -->
-              <div
+                <td class="cell-provider">
+                  <div class="provider-leading">
+                    <div class="card-icon" :style="{ backgroundColor: card.tint, color: card.accent }">
+                      <span v-if="!iconSvg(card.icon)" class="icon-fallback">
+                        {{ vendorInitials(card.name) }}
+                      </span>
+                      <span v-else class="icon-svg" v-html="iconSvg(card.icon)" aria-hidden="true"></span>
+                    </div>
+                    <div class="provider-text">
+                      <div class="provider-title-row">
+                        <span v-if="isLastUsedProvider(card.name)" class="row-chip row-chip--active">
+                          ✓ {{ t('components.main.providers.lastUsed') }}
+                        </span>
+                        <p class="card-title">{{ card.name }}</p>
+                        <span v-if="isDirectApplied(card) && !activeProxyState" class="current-use-badge">
+                          {{ t('components.main.directApply.currentBadge') }}
+                        </span>
+                        <span
+                          v-if="card.availabilityMonitorEnabled"
+                          class="connectivity-dot"
+                          :class="getConnectivityIndicatorClass(card.id)"
+                          :title="getConnectivityTooltip(card.id)"
+                        ></span>
+                        <span v-if="card.level" class="level-badge scheduling-level" :class="`level-${card.level}`">
+                          L{{ card.level }}
+                        </span>
+                        <span
+                          v-if="getProviderBlacklistStatus(card.name)"
+                          :class="[
+                            'blacklist-level-badge',
+                            `bl-level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`,
+                            { dark: resolvedTheme === 'dark' }
+                          ]"
+                          :title="t('components.main.blacklist.levelTitle', { level: getProviderBlacklistStatus(card.name)!.blacklistLevel })"
+                        >
+                          BL{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                        </span>
+                        <button
+                          v-if="card.officialSite"
+                          class="card-site"
+                          type="button"
+                          @click.stop="openOfficialSite(card.officialSite)"
+                        >
+                          {{ formatOfficialSite(card.officialSite) }}
+                        </button>
+                      </div>
+                      <div class="provider-subtitle mono-text" :title="card.apiUrl">{{ card.apiUrl }}</div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="cell-metrics">
+                  <div v-for="stats in [providerStatDisplay(card.name)]" :key="`metrics-${card.id}`" class="metrics-inline">
+                    <template v-if="stats.state !== 'ready'">
+                      <span class="muted">{{ stats.message }}</span>
+                    </template>
+                    <template v-else>
+                      <span v-if="stats.successRateLabel" class="card-success-rate" :class="stats.successRateClass">
+                        {{ stats.successRateLabel }}
+                      </span>
+                      <span class="card-metric-separator" aria-hidden="true">·</span>
+                      <span>{{ stats.requests }}</span>
+                      <span class="card-metric-separator" aria-hidden="true">·</span>
+                      <span>{{ stats.tokens }}</span>
+                      <span class="card-metric-separator" aria-hidden="true">·</span>
+                      <span>{{ stats.cost }}</span>
+                    </template>
+                  </div>
+                </td>
+
+                <td class="cell-actions">
+                  <div class="row-actions">
+                    <label class="mac-switch sm">
+                      <input type="checkbox" v-model="card.enabled" @change="persistProviders(activeTab)" />
+                      <span></span>
+                    </label>
+                    <button
+                      v-if="activeTab !== 'others'"
+                      class="ghost-icon direct-apply-btn"
+                      :class="{ 'is-active': isDirectApplied(card) && !activeProxyState }"
+                      :disabled="activeProxyState"
+                      :title="activeProxyState ? t('components.main.directApply.proxyEnabled') : (isDirectApplied(card) ? t('components.main.directApply.inUse') : t('components.main.directApply.title'))"
+                      @click.stop="!isDirectApplied(card) && handleDirectApply(card)"
+                    >
+                      <span v-if="isDirectApplied(card) && !activeProxyState" class="apply-text">{{ t('components.main.directApply.inUse') }}</span>
+                      <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="lightning-icon">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </button>
+                    <button class="ghost-icon" @click.stop="configure(card)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M11.983 2.25a1.125 1.125 0 011.077.81l.563 2.101a7.482 7.482 0 012.326 1.343l2.08-.621a1.125 1.125 0 011.356.651l1.313 3.207a1.125 1.125 0 01-.442 1.339l-1.86 1.205a7.418 7.418 0 010 2.686l1.86 1.205a1.125 1.125 0 01.442 1.339l-1.313 3.207a1.125 1.125 0 01-1.356.651l-2.08-.621a7.482 7.482 0 01-2.326 1.343l-.563 2.101a1.125 1.125 0 01-1.077.81h-2.634a1.125 1.125 0 01-1.077-.81l-.563-2.101a7.482 7.482 0 01-2.326-1.343l-2.08.621a1.125 1.125 0 01-1.356-.651l-1.313-3.207a1.125 1.125 0 01.442-1.339l1.86-1.205a7.418 7.418 0 010-2.686l-1.86-1.205a1.125 1.125 0 01-.442-1.339l1.313-3.207a1.125 1.125 0 011.356-.651l2.08.621a7.482 7.482 0 012.326-1.343l.563-2.101a1.125 1.125 0 011.077-.81h2.634z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                    <button class="ghost-icon" :data-tooltip="t('components.main.controls.duplicate')" @click.stop="handleDuplicate(card)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button class="ghost-icon" @click.stop="requestRemove(card)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr v-if="getProviderBlacklistStatus(card.name)?.isBlacklisted" class="automation-detail-row">
+                <td colspan="3">
+                  <div :class="['blacklist-banner', { dark: resolvedTheme === 'dark' }]">
+                    <div class="blacklist-info">
+                      <span class="blacklist-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                          <path
+                            d="M8 8l8 8"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                      </span>
+                      <span
+                        v-if="getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
+                        :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
+                      >
+                        L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                      </span>
+                      <span class="blacklist-text">
+                        {{ t('components.main.blacklist.blocked') }} |
+                        {{ t('components.main.blacklist.remaining') }}:
+                        {{ formatBlacklistCountdown(getProviderBlacklistStatus(card.name)!.remainingSeconds) }}
+                      </span>
+                    </div>
+                    <div class="blacklist-actions">
+                      <button
+                        class="unblock-btn primary"
+                        type="button"
+                        @click.stop="handleUnblockAndReset(card.name)"
+                        :title="t('components.main.blacklist.unblockAndResetHint')"
+                      >
+                        {{ t('components.main.blacklist.unblockAndReset') }}
+                      </button>
+                      <button
+                        class="unblock-btn secondary"
+                        type="button"
+                        @click.stop="handleResetLevel(card.name)"
+                        :title="t('components.main.blacklist.resetLevelHint')"
+                      >
+                        {{ t('components.main.blacklist.resetLevel') }}
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr
                 v-else-if="getProviderBlacklistStatus(card.name) && getProviderBlacklistStatus(card.name)!.blacklistLevel > 0"
-                class="level-badge-standalone"
+                class="automation-detail-row"
               >
-                <span
-                  :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
-                >
-                  L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
-                </span>
-                <span class="level-hint">{{ t('components.main.blacklist.levelHint') }}</span>
-                <button
-                  class="reset-level-mini"
-                  type="button"
-                  @click.stop="handleResetLevel(card.name)"
-                  :title="t('components.main.blacklist.resetLevelHint')"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="card-actions">
-            <label class="mac-switch sm">
-              <input type="checkbox" v-model="card.enabled" @change="persistProviders(activeTab)" />
-              <span></span>
-            </label>
-            <!-- 直连应用按钮 -->
-            <button
-              v-if="activeTab !== 'others'"
-              class="ghost-icon direct-apply-btn"
-              :class="{ 'is-active': isDirectApplied(card) && !activeProxyState }"
-              :disabled="activeProxyState"
-              :title="activeProxyState ? t('components.main.directApply.proxyEnabled') : (isDirectApplied(card) ? t('components.main.directApply.inUse') : t('components.main.directApply.title'))"
-              @click.stop="!isDirectApplied(card) && handleDirectApply(card)"
-            >
-              <span v-if="isDirectApplied(card) && !activeProxyState" class="apply-text">{{ t('components.main.directApply.inUse') }}</span>
-              <svg v-else viewBox="0 0 24 24" aria-hidden="true" class="lightning-icon">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-            <button class="ghost-icon" @click="configure(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M11.983 2.25a1.125 1.125 0 011.077.81l.563 2.101a7.482 7.482 0 012.326 1.343l2.08-.621a1.125 1.125 0 011.356.651l1.313 3.207a1.125 1.125 0 01-.442 1.339l-1.86 1.205a7.418 7.418 0 010 2.686l1.86 1.205a1.125 1.125 0 01.442 1.339l-1.313 3.207a1.125 1.125 0 01-1.356.651l-2.08-.621a7.482 7.482 0 01-2.326 1.343l-.563 2.101a1.125 1.125 0 01-1.077.81h-2.634a1.125 1.125 0 01-1.077-.81l-.563-2.101a7.482 7.482 0 01-2.326-1.343l-2.08.621a1.125 1.125 0 01-1.356-.651l-1.313-3.207a1.125 1.125 0 01.442-1.339l1.86-1.205a7.418 7.418 0 010-2.686l-1.86-1.205a1.125 1.125 0 01-.442-1.339l1.313-3.207a1.125 1.125 0 011.356-.651l2.08.621a7.482 7.482 0 012.326-1.343l.563-2.101a1.125 1.125 0 011.077-.81h2.634z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-            <button class="ghost-icon" :data-tooltip="t('components.main.controls.duplicate')" @click="handleDuplicate(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <button class="ghost-icon" @click="requestRemove(card)">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </article>
+                <td colspan="3">
+                  <div class="level-badge-standalone">
+                    <span
+                      :class="['level-badge', `level-${getProviderBlacklistStatus(card.name)!.blacklistLevel}`, { dark: resolvedTheme === 'dark' }]"
+                    >
+                      L{{ getProviderBlacklistStatus(card.name)!.blacklistLevel }}
+                    </span>
+                    <span class="level-hint">{{ t('components.main.blacklist.levelHint') }}</span>
+                    <button
+                      class="reset-level-mini"
+                      type="button"
+                      @click.stop="handleResetLevel(card.name)"
+                      :title="t('components.main.blacklist.resetLevelHint')"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
 
       <!-- 自定义 CLI 工具配置文件编辑器 -->
@@ -2927,56 +2927,90 @@ const confirmDeleteCliTool = async () => {
 <style scoped>
 /* 正在使用的供应商卡片样式 */
 /* @author sm */
-.automation-card.is-last-used {
-  position: relative;
-  border: 2px solid rgb(16, 185, 129);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+.automation-table-wrapper {
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  overflow-x: auto;
+  background: var(--mac-surface);
 }
 
-/* 正在使用标签 */
-.last-used-badge {
-  position: absolute;
-  top: -10px;
-  right: 12px;
-  background: rgb(16, 185, 129);
-  color: white;
-  font-size: 10px;
+.automation-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.automation-table th,
+.automation-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
+  vertical-align: top;
+}
+
+.automation-table th {
+  font-size: 12px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
-  z-index: 1;
+  color: var(--mac-text-secondary);
+  text-align: left;
+  background: color-mix(in srgb, var(--mac-surface) 75%, transparent);
+}
+
+.col-provider {
+  width: 520px;
+}
+
+.col-metrics {
+  width: 360px;
+}
+
+.col-actions {
+  width: 240px;
+  text-align: right;
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.automation-row:hover td {
+  background: color-mix(in srgb, var(--mac-surface) 70%, rgba(255, 255, 255, 0.04));
+}
+
+.automation-row.dragging td {
+  opacity: 0.65;
+}
+
+.automation-row.is-last-used td {
+  background: color-mix(in srgb, rgba(16, 185, 129, 0.10) 70%, var(--mac-surface));
+}
+
+.automation-row.is-last-used td:first-child {
+  box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.9);
 }
 
 /* 高亮闪烁的供应商卡片（切换/拉黑时） */
-.automation-card.is-highlighted {
+.automation-row.is-highlighted td {
   animation: highlight-pulse 0.6s ease-in-out 3;
-  border-color: rgb(245, 158, 11);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.9);
 }
 
 @keyframes highlight-pulse {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+    background: color-mix(in srgb, rgba(245, 158, 11, 0.08) 70%, var(--mac-surface));
   }
   50% {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+    background: color-mix(in srgb, rgba(245, 158, 11, 0.16) 70%, var(--mac-surface));
   }
 }
 
 /* 暗色模式适配 */
-:global(.dark) .automation-card.is-last-used {
-  border-color: rgb(52, 211, 153);
-  box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+:global(.dark) .automation-row.is-last-used td:first-child {
+  box-shadow: inset 3px 0 0 rgba(52, 211, 153, 0.95);
 }
 
-:global(.dark) .last-used-badge {
-  background: rgb(52, 211, 153);
-  color: rgb(6, 78, 59);
-}
-
-:global(.dark) .automation-card.is-highlighted {
-  border-color: rgb(251, 191, 36);
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+:global(.dark) .automation-row.is-highlighted td {
+  box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.95);
 }
 
 .global-actions .ghost-icon svg.rotating {
@@ -3017,6 +3051,83 @@ const confirmDeleteCliTool = async () => {
 /* 黑名单等级徽章与调度等级徽章的间距 */
 .card-title-row .blacklist-level-badge {
   margin-left: 4px;
+}
+
+.provider-leading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.provider-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.provider-subtitle {
+  font-size: 0.82rem;
+  color: var(--mac-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 520px;
+}
+
+.mono-text {
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.row-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(16, 185, 129, 0.85);
+}
+
+:global(.dark) .row-chip {
+  color: rgb(6, 78, 59);
+  background: rgba(52, 211, 153, 0.85);
+}
+
+.metrics-inline {
+  font-size: 0.86rem;
+  color: var(--mac-text-secondary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muted {
+  color: var(--mac-text-secondary);
+}
+
+.automation-detail-row td {
+  padding-top: 0;
+  background: transparent;
 }
 
 /* Level 配色方案：从绿色（高优先级）到红色（低优先级）*/

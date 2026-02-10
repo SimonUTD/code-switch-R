@@ -1089,12 +1089,18 @@ func (prs *ProviderRelayService) forwardRequest(
 	// 【请求详情缓存】准备响应收集器
 	var responseCollector *strings.Builder
 	var respHeaders map[string]string // 响应头（用于请求详情缓存）
-	shouldRecordDetail := GlobalRequestDetailCache != nil &&
+	shouldRecordDetail := IsLoggingEnabled() &&
+		GlobalRequestDetailCache != nil &&
 		GlobalRequestDetailCache.GetMode() != RequestDetailModeOff
 
 	start := time.Now()
 	defer func() {
 		requestLog.DurationSec = time.Since(start).Seconds()
+
+		// 全局日志关闭：不记录任何日志（含 request_log / request_detail / MITM / console）
+		if !IsLoggingEnabled() {
+			return
+		}
 
 		// 【修复】判空保护：避免队列未初始化时 panic
 		if GlobalDBQueueLogs == nil {
@@ -2151,6 +2157,12 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 		// 保存日志的 defer
 		defer func() {
 			requestLog.DurationSec = time.Since(start).Seconds()
+
+			// 全局日志关闭：不记录任何日志
+			if !IsLoggingEnabled() {
+				return
+			}
+
 			if GlobalDBQueueLogs == nil {
 				return
 			}

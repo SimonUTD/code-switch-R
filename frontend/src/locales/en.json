@@ -68,8 +68,15 @@
     "sections": {
       "system": { "title": "System Status" },
       "heatmap": { "title": "Heatmap (Last 14 days · hourly)" },
-      "usage": { "title": "Usage Stats (Today)" },
+      "usage": { "title": "Usage Stats" },
       "monitor": { "title": "Monitoring (Live)" }
+    },
+    "usageRange": {
+      "label": "Usage range",
+      "today": "Today",
+      "days3": "3D",
+      "days7": "7D",
+      "days14": "14D"
     },
     "system": {
       "relay": "Proxy Relay",
@@ -123,6 +130,11 @@
     "nextRefresh": "Next refresh",
     "notMonitored": "Not monitored",
     "noProviders": "No providers yet. Please add provider configuration first.",
+    "table": {
+      "provider": "Provider",
+      "config": "Config",
+      "timeline": "Timeline"
+    },
     "stats": {
       "operational": "Operational",
       "degraded": "Degraded",
@@ -318,6 +330,11 @@
         "ariaLabel": "AI vendor switcher",
         "addCard": "Add vendor card",
         "refresh": "Refresh data"
+      },
+      "table": {
+        "provider": "Provider",
+        "metrics": "Metrics",
+        "actions": "Actions"
       },
       "relayToggle": {
         "label": "Claude proxy",
@@ -601,7 +618,8 @@
         "cache": "Cache reads",
         "cacheHint": "Read hits across responses",
         "costHint": "24h total cost",
-        "todayScope": "Today · {date}"
+        "todayScope": "Today · {date}",
+        "rangeScope": "Last {days} days · {start}–{end}"
       },
       "table": {
         "time": "Time",
@@ -627,8 +645,8 @@
       "nextRefresh": "Next refresh in {seconds}s",
       "query": "Query",
       "costDetail": {
-        "title": "Today's Cost Breakdown",
-        "empty": "No cost records today"
+        "title": "Cost Breakdown",
+        "empty": "No cost records"
       },
       "detail": {
         "title": "Request Details",
@@ -683,6 +701,8 @@
         "switchNotifyHint": "Send system notification when provider switches or gets blacklisted",
         "roundRobin": "Same-Level Round Robin",
         "roundRobinHint": "When enabled, providers at the same Level take turns handling requests; when disabled, always starts from the first",
+        "enableLogging": "Enable logging",
+        "enableLoggingHint": "When disabled, the app will not record any logs (request logs, MITM logs, console logs, etc.)",
         "autoUpdate": "Automatic update",
         "autoConnectivityTest": "Auto Availability Monitoring",
         "autoConnectivityTestHint": "Automatically check availability of monitored providers every minute",
@@ -790,7 +810,7 @@
       "import": {
         "title": "Batch Import MCP Servers",
         "inputDesc": "Paste MCP configuration JSON. Supports Claude Desktop format, array format, or server map format.",
-        "placeholder": "{\n  \"mcpServers\": {\n    \"server-name\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-xxx\"]\n    }\n  }\n}",
+        "placeholder": "{\n  \"mcpServers\": {\n    \"local-server\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-xxx\"],\n      \"env\": { \"FOO\": \"bar\" },\n      \"cwd\": \"/path/to/workdir\",\n      \"startup_timeout_sec\": 30\n    },\n    \"remote-server\": {\n      \"type\": \"http\",\n      \"url\": \"https://example.com/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer YOUR_API_KEY\"\n      }\n    }\n  }\n}",
         "next": "Next",
         "parsing": "Parsing...",
         "back": "Back",
@@ -821,6 +841,7 @@
         "empty": "No MCP servers yet. Use the button below to create one.",
         "loadError": "Failed to load MCP servers",
         "saveError": "Failed to save MCP servers",
+        "endpoint": "Command / URL",
         "edit": "Edit server",
         "delete": "Delete server",
         "placeholderWarning": "Replace placeholders first: {vars}"
@@ -851,7 +872,17 @@
         "command": "Command",
         "args": "Arguments",
         "argsHint": "One argument per line. They will be passed in order.",
+        "cwd": "Working directory",
+        "cwdHint": "Optional. Only applies to stdio servers.",
         "url": "Service URL",
+        "headers": "HTTP headers",
+        "headersHint": "Optional. Only applies to HTTP servers.",
+        "headerKey": "Header",
+        "headerValue": "Value",
+        "headerAdd": "Add header",
+        "headerRemove": "Delete header",
+        "startupTimeout": "Startup timeout (sec)",
+        "startupTimeoutHint": "Optional. Codex uses startup_timeout_sec.",
         "website": "Website",
         "tips": "Helper note",
         "tipsHint": "Example: Visit ref.tools to get your API key",
@@ -875,7 +906,10 @@
             "commandRequired": "command is required for stdio servers",
             "urlRequired": "url is required for http servers",
             "argsInvalid": "args must be an array of strings",
-            "envInvalid": "env must be an object with string values",
+            "envInvalid": "env must be an object with primitive values",
+            "headersInvalid": "headers must be an object with primitive values",
+            "cwdInvalid": "cwd must be a string",
+            "startupTimeoutInvalid": "startup_timeout_sec must be a non-negative number",
             "applyFailed": "Failed to apply JSON. Please check the content."
           }
         },

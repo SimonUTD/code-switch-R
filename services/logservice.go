@@ -385,6 +385,135 @@ func (ls *LogService) StatsSince(platform string) (LogStats, error) {
 	return stats, nil
 }
 
+// StatsSinceRange returns usage stats for the last N days (including today).
+// - days == 1: hourly series (24 buckets) for today (same as StatsSince)
+// - days  > 1: daily series (N buckets), oldest -> newest
+func (ls *LogService) StatsSinceRange(platform string, days int) (LogStats, error) {
+	days = intClamp(days, 1, 14)
+	if days == 1 {
+		return ls.StatsSince(platform)
+	}
+
+	stats := LogStats{
+		Series: make([]LogStatsSeries, 0, days),
+	}
+
+	now := time.Now()
+	seriesStart := startOfDay(now).Add(-time.Duration(days-1) * 24 * time.Hour)
+	seriesEnd := startOfDay(now).Add(24 * time.Hour)
+	queryStart := seriesStart.Add(-24 * time.Hour)
+	summaryStart := seriesStart
+
+	model := xdb.New("request_log")
+	options := []xdb.Option{
+		xdb.WhereGte("created_at", queryStart.Format(timeLayout)),
+		xdb.Field(
+			"model",
+			"input_tokens",
+			"output_tokens",
+			"reasoning_tokens",
+			"cache_create_tokens",
+			"cache_read_tokens",
+			"created_at",
+		),
+		xdb.OrderByAsc("created_at"),
+	}
+	if platform != "" {
+		options = append(options, xdb.WhereEq("platform", platform))
+	}
+
+	records, err := model.Selects(options...)
+	if err != nil {
+		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
+			return stats, nil
+		}
+		return stats, err
+	}
+
+	seriesBuckets := make([]*LogStatsSeries, days)
+	for i := 0; i < days; i++ {
+		dayStart := seriesStart.Add(time.Duration(i) * 24 * time.Hour)
+		seriesBuckets[i] = &LogStatsSeries{Day: dayStart.Format("2006-01-02")}
+	}
+
+	dayIndex := func(start time.Time, t time.Time) int {
+		sy, sm, sd := start.Date()
+		ty, tm, td := t.Date()
+		startUTC := time.Date(sy, sm, sd, 0, 0, 0, 0, time.UTC)
+		tUTC := time.Date(ty, tm, td, 0, 0, 0, 0, time.UTC)
+		return int(tUTC.Sub(startUTC).Hours() / 24)
+	}
+
+	for _, record := range records {
+		createdAt, hasTime := parseCreatedAt(record)
+		if !hasTime {
+			dayKey := dayFromTimestamp(record.GetString("created_at"))
+			if parsed, err := time.ParseInLocation("2006-01-02", dayKey, time.Local); err == nil {
+				createdAt = parsed
+			}
+		}
+
+		if createdAt.Before(seriesStart) || !createdAt.Before(seriesEnd) {
+			continue
+		}
+
+		bucketIndex := dayIndex(seriesStart, createdAt)
+		if bucketIndex < 0 || bucketIndex >= days {
+			continue
+		}
+
+		bucket := seriesBuckets[bucketIndex]
+		input := record.GetInt("input_tokens")
+		output := record.GetInt("output_tokens")
+		reasoning := record.GetInt("reasoning_tokens")
+		cacheCreate := record.GetInt("cache_create_tokens")
+		cacheRead := record.GetInt("cache_read_tokens")
+
+		usage := modelpricing.UsageSnapshot{
+			InputTokens:       input,
+			OutputTokens:      output,
+			ReasoningTokens:   reasoning,
+			CacheCreateTokens: cacheCreate,
+			CacheReadTokens:   cacheRead,
+		}
+		cost := ls.calculateCost(record.GetString("model"), usage)
+
+		bucket.TotalRequests++
+		bucket.InputTokens += int64(input)
+		bucket.OutputTokens += int64(output)
+		bucket.ReasoningTokens += int64(reasoning)
+		bucket.CacheCreateTokens += int64(cacheCreate)
+		bucket.CacheReadTokens += int64(cacheRead)
+		bucket.TotalCost += cost.TotalCost
+
+		if createdAt.Before(summaryStart) {
+			continue
+		}
+		stats.TotalRequests++
+		stats.InputTokens += int64(input)
+		stats.OutputTokens += int64(output)
+		stats.ReasoningTokens += int64(reasoning)
+		stats.CacheCreateTokens += int64(cacheCreate)
+		stats.CacheReadTokens += int64(cacheRead)
+		stats.CostInput += cost.InputCost
+		stats.CostOutput += cost.OutputCost
+		stats.CostCacheCreate += cost.CacheCreateCost
+		stats.CostCacheRead += cost.CacheReadCost
+		stats.CostTotal += cost.TotalCost
+	}
+
+	for i := 0; i < days; i++ {
+		if bucket := seriesBuckets[i]; bucket != nil {
+			stats.Series = append(stats.Series, *bucket)
+			continue
+		}
+		dayStart := seriesStart.Add(time.Duration(i) * 24 * time.Hour)
+		stats.Series = append(stats.Series, LogStatsSeries{Day: dayStart.Format("2006-01-02")})
+	}
+
+	return stats, nil
+}
+
 func (ls *LogService) ProviderDailyStats(platform string) ([]ProviderDailyStat, error) {
 	start := startOfDay(time.Now())
 	end := start.Add(24 * time.Hour)
@@ -478,6 +607,125 @@ func (ls *LogService) ProviderDailyStats(platform string) ([]ProviderDailyStat, 
 		return stats[i].TotalRequests > stats[j].TotalRequests
 	})
 	return stats, nil
+}
+
+// ProviderStatsSinceRange aggregates provider stats for the last N days (including today).
+// - days == 1: same as ProviderDailyStats (today)
+func (ls *LogService) ProviderStatsSinceRange(platform string, days int) ([]ProviderDailyStat, error) {
+	days = intClamp(days, 1, 14)
+	if days == 1 {
+		return ls.ProviderDailyStats(platform)
+	}
+
+	rangeStart := startOfDay(time.Now()).Add(-time.Duration(days-1) * 24 * time.Hour)
+	rangeEnd := startOfDay(time.Now()).Add(24 * time.Hour)
+	queryStart := rangeStart.Add(-24 * time.Hour)
+
+	model := xdb.New("request_log")
+	options := []xdb.Option{
+		xdb.WhereGte("created_at", queryStart.Format(timeLayout)),
+		xdb.Field(
+			"provider",
+			"model",
+			"http_code",
+			"input_tokens",
+			"output_tokens",
+			"reasoning_tokens",
+			"cache_create_tokens",
+			"cache_read_tokens",
+			"created_at",
+		),
+	}
+	if platform != "" {
+		options = append(options, xdb.WhereEq("platform", platform))
+	}
+	records, err := model.Selects(options...)
+	if err != nil {
+		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
+			return []ProviderDailyStat{}, nil
+		}
+		return nil, err
+	}
+
+	statMap := map[string]*ProviderDailyStat{}
+	for _, record := range records {
+		provider := strings.TrimSpace(record.GetString("provider"))
+		if provider == "" {
+			provider = "(unknown)"
+		}
+
+		createdAt, hasTime := parseCreatedAt(record)
+		if !hasTime {
+			dayKey := dayFromTimestamp(record.GetString("created_at"))
+			if parsed, err := time.ParseInLocation("2006-01-02", dayKey, time.Local); err == nil {
+				createdAt = parsed
+			}
+		}
+
+		if createdAt.Before(rangeStart) || !createdAt.Before(rangeEnd) {
+			continue
+		}
+
+		stat := statMap[provider]
+		if stat == nil {
+			stat = &ProviderDailyStat{Provider: provider}
+			statMap[provider] = stat
+		}
+
+		httpCode := record.GetInt("http_code")
+		input := record.GetInt("input_tokens")
+		output := record.GetInt("output_tokens")
+		reasoning := record.GetInt("reasoning_tokens")
+		cacheCreate := record.GetInt("cache_create_tokens")
+		cacheRead := record.GetInt("cache_read_tokens")
+
+		usage := modelpricing.UsageSnapshot{
+			InputTokens:       input,
+			OutputTokens:      output,
+			ReasoningTokens:   reasoning,
+			CacheCreateTokens: cacheCreate,
+			CacheReadTokens:   cacheRead,
+		}
+		cost := ls.calculateCost(record.GetString("model"), usage)
+
+		stat.TotalRequests++
+		if httpCode >= 200 && httpCode < 300 {
+			stat.SuccessfulRequests++
+		} else {
+			stat.FailedRequests++
+		}
+		stat.InputTokens += int64(input)
+		stat.OutputTokens += int64(output)
+		stat.ReasoningTokens += int64(reasoning)
+		stat.CacheCreateTokens += int64(cacheCreate)
+		stat.CacheReadTokens += int64(cacheRead)
+		stat.CostTotal += cost.TotalCost
+	}
+
+	stats := make([]ProviderDailyStat, 0, len(statMap))
+	for _, stat := range statMap {
+		if stat.TotalRequests > 0 {
+			stat.SuccessRate = float64(stat.SuccessfulRequests) / float64(stat.TotalRequests)
+		}
+		stats = append(stats, *stat)
+	}
+	sort.Slice(stats, func(i, j int) bool {
+		if stats[i].TotalRequests == stats[j].TotalRequests {
+			return stats[i].Provider < stats[j].Provider
+		}
+		return stats[i].TotalRequests > stats[j].TotalRequests
+	})
+	return stats, nil
+}
+
+func intClamp(value, minValue, maxValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
+	}
+	return value
 }
 
 func (ls *LogService) decorateCost(logEntry *RequestLog) {

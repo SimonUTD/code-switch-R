@@ -328,103 +328,133 @@ onUnmounted(() => {
             {{ platform }} {{ t('availability.providers') }}
           </h2>
 
-          <div class="provider-list">
-            <article v-for="timeline in timelines[platform]" :key="timeline.providerId" class="provider-card">
-              <div class="provider-top">
-                <div class="provider-left">
-                  <label class="mac-switch sm">
-                    <input
-                      type="checkbox"
-                      :checked="timeline.availabilityMonitorEnabled"
-                      @change="toggleMonitor(platform, timeline.providerId, !timeline.availabilityMonitorEnabled)"
-                    />
-                    <span></span>
-                  </label>
+          <div class="availability-table-wrapper">
+            <table class="availability-table">
+              <thead>
+                <tr>
+                  <th class="col-provider">{{ t('availability.table.provider') }}</th>
+                  <th class="col-config">{{ t('availability.table.config') }}</th>
+                  <th class="col-timeline">{{ t('availability.table.timeline') }}</th>
+                  <th class="col-actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="timeline in timelines[platform]" :key="timeline.providerId">
+                  <td class="cell-provider">
+                    <div class="provider-row">
+                      <label class="mac-switch sm">
+                        <input
+                          type="checkbox"
+                          :checked="timeline.availabilityMonitorEnabled"
+                          @change="toggleMonitor(platform, timeline.providerId, !timeline.availabilityMonitorEnabled)"
+                        />
+                        <span></span>
+                      </label>
 
-                  <span class="provider-name">{{ timeline.providerName }}</span>
+                      <div class="provider-main">
+                        <div class="provider-title">
+                          <span class="provider-name">{{ timeline.providerName }}</span>
+                          <span
+                            v-if="timeline.availabilityMonitorEnabled && timeline.latest"
+                            class="provider-status"
+                            :class="getStatusColor(timeline.latest.status)"
+                          >
+                            {{ formatStatus(timeline.latest.status) }}
+                          </span>
+                          <span v-else class="provider-status provider-status--disabled">
+                            {{ t('availability.notMonitored') }}
+                          </span>
+                        </div>
+                        <div class="provider-meta">
+                          <span v-if="timeline.latest?.latencyMs" class="provider-meta-item">
+                            {{ timeline.latest.latencyMs }}ms
+                          </span>
+                          <span v-if="timeline.uptime > 0" class="provider-meta-item">
+                            {{ timeline.uptime.toFixed(1) }}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
 
-                  <span
-                    v-if="timeline.availabilityMonitorEnabled && timeline.latest"
-                    class="provider-status"
-                    :class="getStatusColor(timeline.latest.status)"
-                  >
-                    {{ formatStatus(timeline.latest.status) }}
-                  </span>
-                  <span v-else class="provider-status provider-status--disabled">
-                    {{ t('availability.notMonitored') }}
-                  </span>
-                </div>
+                  <td class="cell-config">
+                    <div v-if="timeline.availabilityMonitorEnabled" class="config-lines">
+                      <div class="config-line">
+                        <span class="config-label">{{ t('availability.currentModel') }}</span>
+                        <span class="config-value">{{ displayConfigValue(timeline.availabilityConfig?.testModel, t('availability.defaultModel')) }}</span>
+                      </div>
+                      <div class="config-line">
+                        <span class="config-label">{{ t('availability.currentEndpoint') }}</span>
+                        <span class="config-value">{{ displayConfigValue(timeline.availabilityConfig?.testEndpoint, t('availability.defaultEndpoint')) }}</span>
+                      </div>
+                      <div class="config-line">
+                        <span class="config-label">{{ t('availability.currentTimeout') }}</span>
+                        <span class="config-value">{{ displayConfigValue(timeline.availabilityConfig?.timeout, '15000ms') }}</span>
+                      </div>
+                    </div>
+                    <span v-else class="placeholder-muted">-</span>
+                  </td>
 
-                <div class="provider-right">
-                  <span v-if="timeline.latest?.latencyMs" class="provider-meta-item">
-                    {{ timeline.latest.latencyMs }}ms
-                  </span>
-                  <span v-if="timeline.uptime > 0" class="provider-meta-item">
-                    {{ timeline.uptime.toFixed(1) }}%
-                  </span>
+                  <td class="cell-timeline">
+                    <div v-if="timeline.items?.length > 0" class="timeline-inline">
+                      <div
+                        v-for="(item, idx) in timeline.items.slice(0, 20)"
+                        :key="idx"
+                        :title="`${formatTime(item.checkedAt)} - ${formatStatus(item.status)} (${item.latencyMs}ms)`"
+                        class="timeline-dot"
+                        :class="{
+                          'dot-ok': item.status === HealthStatus.OPERATIONAL,
+                          'dot-warn': item.status === HealthStatus.DEGRADED,
+                          'dot-bad': item.status === HealthStatus.FAILED || item.status === HealthStatus.VALIDATION_ERROR,
+                        }"
+                      ></div>
+                    </div>
+                    <span v-else class="placeholder-muted">-</span>
+                  </td>
 
-                  <BaseButton
-                    v-if="!timeline.availabilityMonitorEnabled"
-                    size="sm"
-                    type="button"
-                    @click="enableMonitoringAndEdit(platform, timeline)"
-                  >
-                    {{ t('availability.enableMonitoring') }}
-                  </BaseButton>
-
-                  <template v-else>
-                    <button
-                      class="ghost-icon sm"
+                  <td class="cell-actions">
+                    <BaseButton
+                      v-if="!timeline.availabilityMonitorEnabled"
+                      size="sm"
                       type="button"
-                      :title="t('availability.check')"
-                      @click="checkSingle(platform, timeline.providerId)"
+                      @click="enableMonitoringAndEdit(platform, timeline)"
                     >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M20.5 8a8.5 8.5 0 10-2.38 7.41"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M20.5 4v4h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <BaseButton variant="outline" size="sm" type="button" @click="editConfig(platform, timeline)">
-                      {{ t('availability.editConfig') }}
+                      {{ t('availability.enableMonitoring') }}
                     </BaseButton>
-                  </template>
-                </div>
-              </div>
-
-              <div v-if="timeline.availabilityMonitorEnabled" class="provider-config">
-                <div>{{ t('availability.currentModel') }}：{{ displayConfigValue(timeline.availabilityConfig?.testModel, t('availability.defaultModel')) }}</div>
-                <div>{{ t('availability.currentEndpoint') }}：{{ displayConfigValue(timeline.availabilityConfig?.testEndpoint, t('availability.defaultEndpoint')) }}</div>
-                <div>{{ t('availability.currentTimeout') }}：{{ displayConfigValue(timeline.availabilityConfig?.timeout, '15000ms') }}</div>
-              </div>
-
-              <div v-if="timeline.items?.length > 0" class="provider-timeline">
-                <div
-                  v-for="(item, idx) in timeline.items.slice(0, 20)"
-                  :key="idx"
-                  :title="`${formatTime(item.checkedAt)} - ${formatStatus(item.status)} (${item.latencyMs}ms)`"
-                  class="timeline-dot"
-                  :class="{
-                    'dot-ok': item.status === HealthStatus.OPERATIONAL,
-                    'dot-warn': item.status === HealthStatus.DEGRADED,
-                    'dot-bad': item.status === HealthStatus.FAILED || item.status === HealthStatus.VALIDATION_ERROR,
-                  }"
-                ></div>
-              </div>
-            </article>
+                    <template v-else>
+                      <button
+                        class="ghost-icon sm"
+                        type="button"
+                        :title="t('availability.check')"
+                        @click="checkSingle(platform, timeline.providerId)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M20.5 8a8.5 8.5 0 10-2.38 7.41"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <path
+                            d="M20.5 4v4h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <BaseButton variant="outline" size="sm" type="button" @click="editConfig(platform, timeline)">
+                        {{ t('availability.editConfig') }}
+                      </BaseButton>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </template>
       </section>
@@ -670,6 +700,117 @@ onUnmounted(() => {
   color: var(--mac-text-secondary);
   display: grid;
   gap: 4px;
+}
+
+.availability-table-wrapper {
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  overflow-x: auto;
+  background: var(--mac-surface);
+}
+
+.availability-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+}
+
+.availability-table th,
+.availability-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
+  vertical-align: top;
+}
+
+.availability-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+  text-align: left;
+  background: color-mix(in srgb, var(--mac-surface) 75%, transparent);
+}
+
+.availability-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--mac-surface) 70%, rgba(255, 255, 255, 0.04));
+}
+
+.col-provider {
+  width: 320px;
+}
+
+.col-config {
+  width: 360px;
+}
+
+.col-actions {
+  width: 220px;
+  text-align: right;
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.provider-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.provider-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.provider-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.config-lines {
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+
+.config-line {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.config-label {
+  color: var(--mac-text-secondary);
+  white-space: nowrap;
+}
+
+.config-value {
+  color: var(--mac-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.timeline-inline {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.placeholder-muted {
+  color: var(--mac-text-secondary);
 }
 
 .provider-timeline {

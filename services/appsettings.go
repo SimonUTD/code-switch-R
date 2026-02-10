@@ -23,6 +23,7 @@ type AppSettings struct {
 	AutoConnectivityTest bool `json:"auto_connectivity_test"`
 	EnableSwitchNotify   bool `json:"enable_switch_notify"` // 供应商切换通知开关
 	EnableRoundRobin     bool `json:"enable_round_robin"`   // 同 Level 轮询负载均衡开关（默认关闭）
+	EnableLogging        bool `json:"enable_logging,omitempty"` // 全局日志开关：关闭后不记录任何日志
 
 	// ========== 出站代理（全局配置 + 分渠道开关） ==========
 	// 说明：
@@ -150,6 +151,7 @@ func (as *AppSettingsService) defaultSettings() AppSettings {
 		AutoConnectivityTest: true,  // 默认开启自动可用性监控（开箱即用）
 		EnableSwitchNotify:   true,  // 默认开启切换通知
 		EnableRoundRobin:     false, // 默认关闭轮询（使用顺序降级）
+		EnableLogging:        false, // 默认不记录日志（降低能耗/写盘）
 
 		ProxyAddress: "",
 		ProxyType:    "http",
@@ -170,6 +172,7 @@ func (as *AppSettingsService) GetAppSettings() (AppSettings, error) {
 	}
 	// 启动阶段也要同步代理配置，确保后台监控/转发拿到最新配置
 	UpdateProxyConfigFromAppSettings(settings)
+	UpdateLoggingConfigFromAppSettings(settings)
 	return settings, nil
 }
 
@@ -196,6 +199,7 @@ func (as *AppSettingsService) SaveAppSettings(settings AppSettings) (AppSettings
 	}
 	// 同步代理配置（保存成功后刷新缓存/连接池）
 	UpdateProxyConfigFromAppSettings(settings)
+	UpdateLoggingConfigFromAppSettings(settings)
 	return settings, nil
 }
 

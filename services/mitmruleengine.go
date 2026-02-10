@@ -413,9 +413,11 @@ func (e *MITMRuleEngine) CreateRuleBasedProxy(logChan chan MITMLogEntry) http.Ha
 					Error:      err.Error(),
 				}
 
-				select {
-				case logChan <- entry:
-				default:
+				if IsLoggingEnabled() {
+					select {
+					case logChan <- entry:
+					default:
+					}
 				}
 
 				w.WriteHeader(http.StatusBadGateway)
@@ -445,9 +447,11 @@ func (e *MITMRuleEngine) CreateRuleBasedProxy(logChan chan MITMLogEntry) http.Ha
 			Latency:    time.Since(start).Milliseconds(),
 		}
 
-		select {
-		case logChan <- entry:
-		default:
+		if IsLoggingEnabled() {
+			select {
+			case logChan <- entry:
+			default:
+			}
 		}
 	})
 }

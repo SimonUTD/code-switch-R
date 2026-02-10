@@ -199,6 +199,10 @@ func isRequestLogJSON(message string) bool {
 
 // addLog 添加日志到缓存
 func (cs *ConsoleService) addLog(level, message string) {
+	if !IsLoggingEnabled() {
+		return
+	}
+
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 

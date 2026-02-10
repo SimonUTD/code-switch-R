@@ -751,6 +751,10 @@ func (hcs *HealthCheckService) buildTestRequest(platform, model string) []byte {
 
 // saveResult 保存检测结果到数据库
 func (hcs *HealthCheckService) saveResult(result *HealthCheckResult) error {
+	// 全局日志关闭：不落盘任何监控历史（仍可保留内存最新状态用于 UI 展示）。
+	if !IsLoggingEnabled() {
+		return nil
+	}
 	if GlobalDBQueue == nil {
 		return fmt.Errorf("数据库写入队列未初始化")
 	}

@@ -115,6 +115,20 @@
     <section class="dashboard-section">
       <div class="dashboard-section__header">
         <h2 class="section__title">{{ t('dashboard.sections.usage.title') }}</h2>
+        <div class="tab-group usage-range" role="tablist" :aria-label="t('dashboard.usageRange.label')">
+          <button
+            v-for="option in usageRangeOptions"
+            :key="option.days"
+            type="button"
+            class="tab-pill"
+            :class="{ active: usageRangeDays === option.days }"
+            role="tab"
+            :aria-selected="usageRangeDays === option.days"
+            @click="changeUsageRange(option.days)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
       </div>
 
       <div class="dashboard-stats">
@@ -187,7 +201,6 @@ import PageLayout from '../common/PageLayout.vue'
 import BaseModal from '../common/BaseModal.vue'
 import Card from '../ui/Card.vue'
 import Badge from '../ui/Badge.vue'
-import Button from '../ui/Button.vue'
 import {
   buildUsageHeatmapMatrix,
   generateFallbackUsageHeatmap,
@@ -239,6 +252,15 @@ const { t, locale } = useI18n()
 const REFRESH_INTERVAL_MS = 30_000
 let refreshTimer: number | undefined
 const refreshing = ref(false)
+
+// ===== 使用统计范围（折线图） =====
+const usageRangeDays = ref<number>(7) // 默认 7 天
+const usageRangeOptions = computed(() => [
+  { days: 1, label: t('dashboard.usageRange.today') },
+  { days: 3, label: t('dashboard.usageRange.days3') },
+  { days: 7, label: t('dashboard.usageRange.days7') },
+  { days: 14, label: t('dashboard.usageRange.days14') },
+])
 
 // ===== 0) 系统状态 =====
 const systemStatus = reactive({
@@ -439,7 +461,7 @@ const parseLogDate = (value?: string) => {
 
 const padHour = (num: number) => num.toString().padStart(2, '0')
 
-const formatSeriesLabel = (value?: string) => {
+const formatHourlyLabel = (value?: string) => {
   if (!value) return ''
   const parsed = parseLogDate(value)
   if (parsed) {
@@ -452,10 +474,19 @@ const formatSeriesLabel = (value?: string) => {
   return value
 }
 
+const formatDailyLabel = (value?: string) => {
+  if (!value) return ''
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (match) {
+    return `${match[2]}-${match[3]}`
+  }
+  return value
+}
+
 const chartData = computed(() => {
   const series = statsSeries.value
   return {
-    labels: series.map((item) => formatSeriesLabel(item.day)),
+    labels: series.map((item) => (usageRangeDays.value > 1 ? formatDailyLabel(item.day) : formatHourlyLabel(item.day))),
     datasets: [
       {
         label: t('components.logs.tokenLabels.cost'),
@@ -592,16 +623,28 @@ const startOfTodayLocal = () => {
   return now
 }
 
-const summaryDateLabel = computed(() => {
-  const firstBucket = statsSeries.value.find((item) => item.day)
-  const parsed = parseLogDate(firstBucket?.day ?? '')
-  const date = parsed ?? startOfTodayLocal()
-  return `${date.getFullYear()}-${padHour(date.getMonth() + 1)}-${padHour(date.getDate())}`
+const scopeHint = computed(() => {
+  if (usageRangeDays.value <= 1) {
+    const firstBucket = statsSeries.value.find((item) => item.day)
+    const parsed = parseLogDate(firstBucket?.day ?? '')
+    const date = parsed ?? startOfTodayLocal()
+    const dateLabel = `${date.getFullYear()}-${padHour(date.getMonth() + 1)}-${padHour(date.getDate())}`
+    return t('components.logs.summary.todayScope', { date: dateLabel })
+  }
+
+  const series = statsSeries.value
+  const start = series[0]?.day ?? ''
+  const end = series[series.length - 1]?.day ?? ''
+  if (!start || !end) return ''
+  return t('components.logs.summary.rangeScope', {
+    days: usageRangeDays.value,
+    start,
+    end,
+  })
 })
 
 const usageStatsCards = computed(() => {
   const data = usageStats.value
-  const summaryDate = summaryDateLabel.value
   const totalTokens =
     (data?.input_tokens ?? 0) + (data?.output_tokens ?? 0) + (data?.reasoning_tokens ?? 0)
   return [
@@ -626,14 +669,14 @@ const usageStatsCards = computed(() => {
     {
       key: 'cost',
       label: t('components.logs.tokenLabels.cost'),
-      hint: summaryDate ? t('components.logs.summary.todayScope', { date: summaryDate }) : '',
+      hint: scopeHint.value,
       value: formatCurrency(data?.cost_total ?? 0),
     },
   ]
 })
 
 const loadUsageStats = async () => {
-  usageStats.value = await fetchLogStats('')
+  usageStats.value = await fetchLogStats('', usageRangeDays.value)
 }
 
 const costDetailModal = reactive<{
@@ -646,12 +689,11 @@ const costDetailModal = reactive<{
   data: [],
 })
 
-const openCostDetailModal = async () => {
-  costDetailModal.open = true
+const loadCostDetailModalData = async () => {
   costDetailModal.loading = true
   costDetailModal.data = []
   try {
-    const stats = await fetchProviderDailyStats('')
+    const stats = await fetchProviderDailyStats('', usageRangeDays.value)
     costDetailModal.data = (stats ?? [])
       .filter((item) => item.cost_total > 0)
       .sort((a, b) => b.cost_total - a.cost_total)
@@ -660,6 +702,11 @@ const openCostDetailModal = async () => {
   } finally {
     costDetailModal.loading = false
   }
+}
+
+const openCostDetailModal = async () => {
+  costDetailModal.open = true
+  await loadCostDetailModalData()
 }
 
 const closeCostDetailModal = () => {
@@ -707,6 +754,15 @@ const monitorStats = computed(() => {
 
 const loadMonitorStats = async () => {
   monitorTimelines.value = await getLatestResults()
+}
+
+const changeUsageRange = async (days: number) => {
+  if (usageRangeDays.value === days) return
+  usageRangeDays.value = days
+  await loadUsageStats()
+  if (costDetailModal.open) {
+    await loadCostDetailModalData()
+  }
 }
 
 // ===== 系统状态刷新 =====
@@ -817,6 +873,12 @@ onUnmounted(() => {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.usage-range {
+  flex: 0 0 auto;
 }
 
 .dashboard-stats {

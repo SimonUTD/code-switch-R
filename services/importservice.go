@@ -540,8 +540,11 @@ type ccMCPServerConfig struct {
 	Type    string    `json:"type"`
 	Command string    `json:"command"`
 	Args    []string  `json:"args"`
+	Cwd     string    `json:"cwd"`
 	Env     stringMap `json:"env"` // 使用 stringMap 兼容旧配置中数字类型的值
 	URL     string    `json:"url"`
+	Headers stringMap `json:"headers"`
+	StartupTimeoutSec int `json:"startup_timeout_sec"`
 }
 
 type providerCandidate struct {
@@ -899,8 +902,11 @@ func appendMCPEntries(target map[string]*MCPServer, entries map[string]ccMCPServ
 				Type:           serverType,
 				Command:        command,
 				Args:           cloneStringSlice(serverCfg.Args),
+				Cwd:            strings.TrimSpace(serverCfg.Cwd),
 				Env:            cloneStringMap(serverCfg.Env),
 				URL:            url,
+				Headers:        cloneStringMap(serverCfg.Headers),
+				StartupTimeoutSec: serverCfg.StartupTimeoutSec,
 				Website:        strings.TrimSpace(entry.Homepage),
 				Tips:           strings.TrimSpace(entry.Description),
 				EnablePlatform: []string{},
@@ -916,8 +922,17 @@ func appendMCPEntries(target map[string]*MCPServer, entries map[string]ccMCPServ
 			if len(existing.Args) == 0 {
 				existing.Args = cloneStringSlice(serverCfg.Args)
 			}
+			if strings.TrimSpace(existing.Cwd) == "" {
+				existing.Cwd = strings.TrimSpace(serverCfg.Cwd)
+			}
 			if len(existing.Env) == 0 {
 				existing.Env = cloneStringMap(serverCfg.Env)
+			}
+			if len(existing.Headers) == 0 {
+				existing.Headers = cloneStringMap(serverCfg.Headers)
+			}
+			if existing.StartupTimeoutSec == 0 {
+				existing.StartupTimeoutSec = serverCfg.StartupTimeoutSec
 			}
 			if existing.Website == "" {
 				existing.Website = strings.TrimSpace(entry.Homepage)
@@ -962,6 +977,63 @@ func containsPlatform(list []string, platform string) bool {
 		}
 	}
 	return false
+}
+
+// flexibleInt 是一个宽容的 int 类型，用于兼容 JSON 中数字被写成字符串的情况。
+// 规则：
+// - null / "" => 0
+// - number / "123" => 123（向下取整）
+// - 负数 => error
+type flexibleInt int
+
+func (i *flexibleInt) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		*i = 0
+		return nil
+	}
+
+	var asInt int
+	if err := json.Unmarshal(data, &asInt); err == nil {
+		if asInt < 0 {
+			return fmt.Errorf("必须为非负数字")
+		}
+		*i = flexibleInt(asInt)
+		return nil
+	}
+
+	var asFloat float64
+	if err := json.Unmarshal(data, &asFloat); err == nil {
+		asInt = int(asFloat)
+		if asInt < 0 {
+			return fmt.Errorf("必须为非负数字")
+		}
+		*i = flexibleInt(asInt)
+		return nil
+	}
+
+	var asString string
+	if err := json.Unmarshal(data, &asString); err == nil {
+		trimmed := strings.TrimSpace(asString)
+		if trimmed == "" {
+			*i = 0
+			return nil
+		}
+		parsed, err := strconv.Atoi(trimmed)
+		if err != nil {
+			asFloat, err2 := strconv.ParseFloat(trimmed, 64)
+			if err2 != nil {
+				return fmt.Errorf("必须为非负数字")
+			}
+			parsed = int(asFloat)
+		}
+		if parsed < 0 {
+			return fmt.Errorf("必须为非负数字")
+		}
+		*i = flexibleInt(parsed)
+		return nil
+	}
+
+	return fmt.Errorf("必须为非负数字")
 }
 
 // stringSlice 是一个宽容的 []string 类型
@@ -1018,10 +1090,16 @@ type MCPParseResult struct {
 type mcpImportServer struct {
 	Name    string      `json:"name,omitempty"`
 	Type    string      `json:"type,omitempty"`
+	Transport string    `json:"transport,omitempty"`
 	Command string      `json:"command,omitempty"`
 	Args    stringSlice `json:"args,omitempty"`
+	Cwd     string      `json:"cwd,omitempty"`
 	Env     stringMap   `json:"env,omitempty"`
 	URL     string      `json:"url,omitempty"`
+	HTTPUrl  string      `json:"httpUrl,omitempty"`
+	Headers stringMap   `json:"headers,omitempty"`
+	StartupTimeoutSec      flexibleInt `json:"startup_timeout_sec,omitempty"`
+	StartupTimeoutSecCamel flexibleInt `json:"startupTimeoutSec,omitempty"`
 	Website string      `json:"website,omitempty"`
 	Tips    string      `json:"tips,omitempty"`
 
@@ -1034,6 +1112,9 @@ func (s mcpImportServer) hasDefinitionFields() bool {
 	if strings.TrimSpace(s.Type) != "" {
 		return true
 	}
+	if strings.TrimSpace(s.Transport) != "" {
+		return true
+	}
 	if strings.TrimSpace(s.Command) != "" {
 		return true
 	}
@@ -1044,6 +1125,18 @@ func (s mcpImportServer) hasDefinitionFields() bool {
 		return true
 	}
 	if strings.TrimSpace(s.URL) != "" {
+		return true
+	}
+	if strings.TrimSpace(s.HTTPUrl) != "" {
+		return true
+	}
+	if strings.TrimSpace(s.Cwd) != "" {
+		return true
+	}
+	if len(s.Headers) > 0 {
+		return true
+	}
+	if s.StartupTimeoutSec != 0 || s.StartupTimeoutSecCamel != 0 {
 		return true
 	}
 	return false
@@ -1292,8 +1385,14 @@ func buildMCPServerFromImport(name string, entry mcpImportServer, defaultPlatfor
 	name = strings.TrimSpace(name)
 
 	typeHint := strings.TrimSpace(entry.Type)
+	if typeHint == "" {
+		typeHint = strings.TrimSpace(entry.Transport)
+	}
 	command := strings.TrimSpace(entry.Command)
 	url := strings.TrimSpace(entry.URL)
+	if url == "" {
+		url = strings.TrimSpace(entry.HTTPUrl)
+	}
 	if typeHint == "" {
 		if url != "" {
 			typeHint = "http"
@@ -1325,18 +1424,33 @@ func buildMCPServerFromImport(name string, entry mcpImportServer, defaultPlatfor
 	}
 	platforms = normalizePlatforms(platforms)
 
+	startupTimeoutSec := int(entry.StartupTimeoutSec)
+	if startupTimeoutSec == 0 {
+		startupTimeoutSec = int(entry.StartupTimeoutSecCamel)
+	}
+
 	server := MCPServer{
 		Name:           name,
 		Type:           typ,
 		Command:        command,
 		Args:           cleanArgs([]string(entry.Args)),
+		Cwd:            strings.TrimSpace(entry.Cwd),
 		Env:            cleanEnv(cloneStringMap(entry.Env)),
 		URL:            url,
+		Headers:        cleanHeaders(cloneStringMap(entry.Headers)),
+		StartupTimeoutSec: startupTimeoutSec,
 		Website:        strings.TrimSpace(entry.Website),
 		Tips:           strings.TrimSpace(entry.Tips),
 		EnablePlatform: platforms,
 	}
-	server.MissingPlaceholders = detectPlaceholders(server.URL, server.Args)
+	server.MissingPlaceholders = detectPlaceholders(
+		server.URL,
+		server.Command,
+		server.Args,
+		server.Cwd,
+		server.Env,
+		server.Headers,
+	)
 	if len(server.MissingPlaceholders) > 0 {
 		server.EnablePlatform = []string{}
 	}
@@ -1378,6 +1492,12 @@ func normalizeIncomingMCPServer(server MCPServer) (MCPServer, error) {
 	typeHint := strings.TrimSpace(server.Type)
 	command := strings.TrimSpace(server.Command)
 	url := strings.TrimSpace(server.URL)
+	cwd := strings.TrimSpace(server.Cwd)
+	headers := cleanHeaders(server.Headers)
+	startupTimeoutSec := server.StartupTimeoutSec
+	if startupTimeoutSec < 0 {
+		return MCPServer{}, fmt.Errorf("%s startup_timeout_sec 不能为负数", name)
+	}
 	if typeHint == "" {
 		if url != "" {
 			typeHint = "http"
@@ -1408,13 +1528,16 @@ func normalizeIncomingMCPServer(server MCPServer) (MCPServer, error) {
 		Type:           typ,
 		Command:        command,
 		Args:           cleanArgs(server.Args),
+		Cwd:            cwd,
 		Env:            cleanEnv(server.Env),
 		URL:            url,
+		Headers:        headers,
+		StartupTimeoutSec: startupTimeoutSec,
 		Website:        strings.TrimSpace(server.Website),
 		Tips:           strings.TrimSpace(server.Tips),
 		EnablePlatform: platforms,
 	}
-	out.MissingPlaceholders = detectPlaceholders(out.URL, out.Args)
+	out.MissingPlaceholders = detectPlaceholders(out.URL, out.Command, out.Args, out.Cwd, out.Env, out.Headers)
 	if len(out.MissingPlaceholders) > 0 {
 		out.EnablePlatform = []string{}
 	}
@@ -1441,9 +1564,15 @@ func mergeMCPServerOverwrite(existing MCPServer, incoming MCPServer) MCPServer {
 		if typeChanged || strings.TrimSpace(incoming.URL) != "" {
 			result.URL = strings.TrimSpace(incoming.URL)
 		}
+		if typeChanged || len(incoming.Headers) > 0 {
+			result.Headers = cleanHeaders(incoming.Headers)
+		}
 		if typeChanged {
 			result.Command = ""
 			result.Args = nil
+			result.Cwd = ""
+			result.Env = nil
+			result.StartupTimeoutSec = 0
 		}
 	} else {
 		// 切换到 stdio 时清除 http 字段
@@ -1453,13 +1582,33 @@ func mergeMCPServerOverwrite(existing MCPServer, incoming MCPServer) MCPServer {
 		if len(incoming.Args) > 0 || typeChanged {
 			result.Args = incoming.Args
 		}
+		if typeChanged || strings.TrimSpace(incoming.Cwd) != "" {
+			result.Cwd = strings.TrimSpace(incoming.Cwd)
+		}
 		if typeChanged {
 			result.URL = ""
+			result.Headers = nil
 		}
 	}
 
-	if len(incoming.Env) > 0 {
+	if typeChanged {
+		// 类型切换时：以 incoming 为准（允许清空）
+		if len(incoming.Env) > 0 {
+			result.Env = incoming.Env
+		} else {
+			result.Env = nil
+		}
+	} else if len(incoming.Env) > 0 {
 		result.Env = incoming.Env
+	}
+	if typeChanged {
+		if incoming.StartupTimeoutSec > 0 {
+			result.StartupTimeoutSec = incoming.StartupTimeoutSec
+		} else {
+			result.StartupTimeoutSec = 0
+		}
+	} else if incoming.StartupTimeoutSec > 0 {
+		result.StartupTimeoutSec = incoming.StartupTimeoutSec
 	}
 	if strings.TrimSpace(incoming.Website) != "" {
 		result.Website = incoming.Website
@@ -1470,7 +1619,14 @@ func mergeMCPServerOverwrite(existing MCPServer, incoming MCPServer) MCPServer {
 
 	result.EnablePlatform = unionPlatforms(existing.EnablePlatform, incoming.EnablePlatform)
 
-	result.MissingPlaceholders = detectPlaceholders(result.URL, result.Args)
+	result.MissingPlaceholders = detectPlaceholders(
+		result.URL,
+		result.Command,
+		result.Args,
+		result.Cwd,
+		result.Env,
+		result.Headers,
+	)
 	if len(result.MissingPlaceholders) > 0 {
 		result.EnablePlatform = []string{}
 	}

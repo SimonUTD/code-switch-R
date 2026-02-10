@@ -30,6 +30,16 @@
             <span class="hint-text">{{ $t('components.general.label.roundRobinHint') }}</span>
           </div>
         </ListItem>
+        <ListItem :label="$t('components.general.label.enableLogging')">
+          <div class="toggle-with-hint">
+            <label class="mac-switch">
+              <input type="checkbox" :disabled="settingsLoading || saveBusy" v-model="loggingEnabled"
+                @change="persistAppSettings" />
+              <span></span>
+            </label>
+            <span class="hint-text">{{ $t('components.general.label.enableLoggingHint') }}</span>
+          </div>
+        </ListItem>
       </div>
     </section>
 
@@ -358,6 +368,7 @@ const autoUpdateEnabled = ref(getCachedValue('autoUpdate', true))
 const autoConnectivityTestEnabled = ref(getCachedValue('autoConnectivityTest', false))
 const switchNotifyEnabled = ref(getCachedValue('switchNotify', true)) // 切换通知开关
 const roundRobinEnabled = ref(getCachedValue('roundRobin', false))    // 同 Level 轮询开关
+const loggingEnabled = ref(getCachedValue('enableLogging', false))    // 全局日志开关（默认关闭）
 
 // 出站代理配置
 const proxyAddress = ref('')
@@ -414,6 +425,7 @@ const loadAppSettings = async () => {
     autoConnectivityTestEnabled.value = data?.auto_connectivity_test ?? false
     switchNotifyEnabled.value = data?.enable_switch_notify ?? true
     roundRobinEnabled.value = data?.enable_round_robin ?? false
+    loggingEnabled.value = data?.enable_logging ?? false
 
     proxyAddress.value = data?.proxy_address ?? ''
     proxyType.value = (data?.proxy_type ?? 'http') || 'http'
@@ -428,6 +440,7 @@ const loadAppSettings = async () => {
     localStorage.setItem('app-settings-autoConnectivityTest', String(autoConnectivityTestEnabled.value))
     localStorage.setItem('app-settings-switchNotify', String(switchNotifyEnabled.value))
     localStorage.setItem('app-settings-roundRobin', String(roundRobinEnabled.value))
+    localStorage.setItem('app-settings-enableLogging', String(loggingEnabled.value))
 
     localStorage.setItem('app-settings-proxyClaude', String(proxyClaude.value))
     localStorage.setItem('app-settings-proxyCodex', String(proxyCodex.value))
@@ -440,6 +453,7 @@ const loadAppSettings = async () => {
     autoConnectivityTestEnabled.value = false
     switchNotifyEnabled.value = true
     roundRobinEnabled.value = false
+    loggingEnabled.value = false
 
     proxyAddress.value = ''
     proxyType.value = 'http'
@@ -462,6 +476,7 @@ const persistAppSettings = async () => {
       auto_connectivity_test: autoConnectivityTestEnabled.value,
       enable_switch_notify: switchNotifyEnabled.value,
       enable_round_robin: roundRobinEnabled.value,
+      enable_logging: loggingEnabled.value,
 
       proxy_address: proxyAddress.value.trim(),
       proxy_type: proxyType.value,
@@ -487,6 +502,7 @@ const persistAppSettings = async () => {
     localStorage.setItem('app-settings-autoConnectivityTest', String(autoConnectivityTestEnabled.value))
     localStorage.setItem('app-settings-switchNotify', String(switchNotifyEnabled.value))
     localStorage.setItem('app-settings-roundRobin', String(roundRobinEnabled.value))
+    localStorage.setItem('app-settings-enableLogging', String(loggingEnabled.value))
 
     localStorage.setItem('app-settings-proxyClaude', String(proxyClaude.value))
     localStorage.setItem('app-settings-proxyCodex', String(proxyCodex.value))

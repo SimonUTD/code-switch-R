@@ -6,6 +6,7 @@ export type AppSettings = {
   auto_connectivity_test: boolean
   enable_switch_notify: boolean // 供应商切换通知开关
   enable_round_robin: boolean   // 同 Level 轮询负载均衡开关
+  enable_logging?: boolean      // 全局日志开关：关闭后不记录任何日志
 
   // ========== 出站代理（全局配置 + 分渠道开关） ==========
   proxy_address?: string
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   auto_connectivity_test: false,
   enable_switch_notify: true,  // 默认开启
   enable_round_robin: false,   // 默认关闭轮询
+  enable_logging: false,       // 默认不记录日志
 
   proxy_address: '',
   proxy_type: 'http',

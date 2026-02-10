@@ -256,53 +256,57 @@ onActivated(() => {
     </div>
 
     <!-- Endpoint List -->
-    <div class="endpoint-list">
-      <div v-if="endpoints.length === 0" class="empty-state">
-        <p>{{ t('speedtest.empty') }}</p>
-      </div>
+    <div class="speedtest-table-wrapper">
+      <table class="speedtest-table">
+        <thead>
+          <tr>
+            <th class="col-url">{{ t('speedtest.columns.url') }}</th>
+            <th class="col-source">{{ t('speedtest.columns.source') }}</th>
+            <th class="col-result">{{ t('speedtest.columns.result') }}</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="endpoints.length === 0">
+            <td class="empty-cell" colspan="4">
+              {{ t('speedtest.empty') }}
+            </td>
+          </tr>
 
-      <div
-        v-for="(endpoint, index) in endpoints"
-        :key="endpoint.url"
-        class="endpoint-card"
-      >
-        <div class="endpoint-info">
-          <div class="endpoint-url">{{ endpoint.url }}</div>
-          <!-- 来源标签 -->
-          <span
-            v-if="endpoint.source !== 'manual' && endpoint.providerName"
-            class="source-badge"
-            :class="`badge-${endpoint.source}`"
-          >
-            {{ endpoint.providerName }}
-          </span>
-        </div>
-
-        <div class="endpoint-result">
-          <span
-            v-if="endpoint.testing"
-            class="result-testing"
-          >
-            {{ t('speedtest.testing') }}...
-          </span>
-          <span
-            v-else-if="endpoint.result"
-            class="result-latency"
-            :style="{ color: getLatencyColor(endpoint.result.latency) }"
-          >
-            <span class="latency-dot" :style="{ background: getLatencyColor(endpoint.result.latency) }"></span>
-            {{ getLatencyText(endpoint.result) }}
-          </span>
-          <span v-else class="result-pending">-</span>
-        </div>
-
-        <button class="ghost-icon sm danger" type="button" @click="removeEndpoint(index)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
+          <tr v-for="(endpoint, index) in endpoints" :key="endpoint.url">
+            <td class="cell-url">
+              <div class="endpoint-url">{{ endpoint.url }}</div>
+            </td>
+            <td class="cell-source">
+              <span v-if="endpoint.source !== 'manual' && endpoint.providerName" class="source-badge"
+                :class="`badge-${endpoint.source}`">
+                {{ endpoint.providerName }}
+              </span>
+              <span v-else class="source-muted">-</span>
+            </td>
+            <td class="cell-result">
+              <span v-if="endpoint.testing" class="result-testing">
+                {{ t('speedtest.testing') }}...
+              </span>
+              <span v-else-if="endpoint.result" class="result-latency"
+                :style="{ color: getLatencyColor(endpoint.result.latency) }">
+                <span class="latency-dot" :style="{ background: getLatencyColor(endpoint.result.latency) }"></span>
+                {{ getLatencyText(endpoint.result) }}
+              </span>
+              <span v-else class="result-pending">-</span>
+            </td>
+            <td class="cell-actions">
+              <button class="ghost-icon sm danger" type="button" :aria-label="t('speedtest.remove')"
+                :data-tooltip="t('speedtest.remove')" @click="removeEndpoint(index)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Legend -->

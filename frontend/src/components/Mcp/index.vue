@@ -42,67 +42,130 @@
         </BaseButton>
       </div>
 
-      <div v-else class="automation-list">
-        <article v-for="server in servers" :key="server.name" class="automation-card">
-          <div class="card-header">
-            <div class="card-leading">
-              <div class="card-icon" :style="iconStyle(server.name)">
-                <span v-if="iconSvg(server.name)" class="icon-svg" v-html="iconSvg(server.name)"
-                  aria-hidden="true"></span>
-                <span v-else class="icon-fallback">{{ serverInitials(server.name) }}</span>
-              </div>
-              <div class="card-text">
-                <div class="card-title-row">
-                  <p class="card-title">{{ server.name }}</p>
-                  <span class="chip">{{ typeLabel(server.type) }}</span>
+      <div v-else class="mcp-table-wrapper">
+        <table class="mcp-table">
+          <thead>
+            <tr>
+              <th class="col-name">{{ t('components.mcp.form.name') }}</th>
+              <th class="col-type">{{ t('components.mcp.form.type') }}</th>
+              <th class="col-endpoint">{{ t('components.mcp.list.endpoint') }}</th>
+              <th class="col-platform">{{ t('components.mcp.platforms.claude') }}</th>
+              <th class="col-platform">{{ t('components.mcp.platforms.codex') }}</th>
+              <th class="col-platform">{{ t('components.mcp.platforms.gemini') }}</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="server in servers" :key="server.name">
+              <td class="cell-name">
+                <div class="name-row">
+                  <div class="card-icon" :style="iconStyle(server.name)">
+                    <span v-if="iconSvg(server.name)" class="icon-svg" v-html="iconSvg(server.name)"
+                      aria-hidden="true"></span>
+                    <span v-else class="icon-fallback">{{ serverInitials(server.name) }}</span>
+                  </div>
+                  <div class="name-text">
+                    <div class="name-title">
+                      <span class="server-name">{{ server.name }}</span>
+                      <span
+                        v-if="hasMissingPlaceholders(server)"
+                        class="placeholder-badge"
+                        :data-tooltip="t('components.mcp.list.placeholderWarning', { vars: (server.missing_placeholders ?? []).join(', ') })"
+                      >
+                        !
+                      </span>
+                    </div>
+                    <a v-if="server.website" class="name-sub" :href="server.website" target="_blank" rel="noreferrer">
+                      {{ server.website }}
+                    </a>
+                    <div v-else-if="server.tips" class="name-sub">
+                      {{ server.tips }}
+                    </div>
+                  </div>
                 </div>
-                <p class="card-metrics">{{ serverSummary(server) }}</p>
-                <p v-if="server.website" class="card-link">
-                  <a :href="server.website" target="_blank" rel="noreferrer">{{ server.website }}</a>
-                </p>
-                <p v-if="server.tips" class="card-tip">{{ server.tips }}</p>
-              </div>
-            </div>
-            <div class="card-actions">
-              <button class="ghost-icon" :aria-label="t('components.mcp.list.edit')" @click="openEditModal(server)">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M16.474 5.408l2.118 2.117m-.756-3.982L12.109 9.27a2.118 2.118 0 00-.58 1.082L11 13l2.648-.53c.41-.082.786-.283 1.082-.579l5.727-5.727a1.853 1.853 0 10-2.621-2.621z"
-                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                  <path d="M19 15v3a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h3" fill="none" stroke="currentColor"
-                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-              <button class="ghost-icon" :aria-label="t('components.mcp.list.delete')" @click="requestDelete(server)">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
-                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                    stroke-linejoin="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div class="card-platforms">
-            <div v-for="option in platformOptions" :key="option.id" class="platform-row">
-              <div class="platform-info">
-                <span class="platform-label">{{ option.label }}</span>
-                <div class="platform-controls">
-                  <span class="platform-status" :class="{ active: platformActive(server, option.id) }">
-                    {{ platformActive(server, option.id) ? t('components.mcp.status.active') :
-                      t('components.mcp.status.inactive') }}
+              </td>
+              <td>
+                <span class="chip">{{ typeLabel(server.type) }}</span>
+              </td>
+              <td class="cell-endpoint">
+                <div class="endpoint-main">
+                  {{ server.type === 'http' ? server.url : server.command }}
+                </div>
+                <div class="endpoint-meta">
+                  <span v-if="server.type === 'stdio' && server.cwd" class="meta-item">cwd: {{ server.cwd }}</span>
+                  <span v-if="server.type === 'http' && Object.keys(server.headers ?? {}).length" class="meta-item">
+                    headers: {{ Object.keys(server.headers ?? {}).length }}
                   </span>
+                  <span v-if="server.startup_timeout_sec" class="meta-item">
+                    startup_timeout_sec: {{ server.startup_timeout_sec }}s
+                  </span>
+                </div>
+              </td>
+              <td class="cell-platform">
+                <div class="platform-cell" :title="platformActive(server, 'claude-code') ? t('components.mcp.status.active') : t('components.mcp.status.inactive')">
+                  <span class="platform-dot" :class="{ active: platformActive(server, 'claude-code') }"></span>
                   <label class="mac-switch sm">
-                    <input type="checkbox" :checked="platformEnabled(server, option.id)" :disabled="saveBusy"
-                      @change="onPlatformToggle(server, option.id, $event)" />
+                    <input
+                      type="checkbox"
+                      :checked="platformEnabled(server, 'claude-code')"
+                      :disabled="saveBusy"
+                      @change="onPlatformToggle(server, 'claude-code', $event)"
+                    />
                     <span></span>
                   </label>
                 </div>
-              </div>
-            </div>
-          </div>
-        </article>
+              </td>
+              <td class="cell-platform">
+                <div class="platform-cell" :title="platformActive(server, 'codex') ? t('components.mcp.status.active') : t('components.mcp.status.inactive')">
+                  <span class="platform-dot" :class="{ active: platformActive(server, 'codex') }"></span>
+                  <label class="mac-switch sm">
+                    <input
+                      type="checkbox"
+                      :checked="platformEnabled(server, 'codex')"
+                      :disabled="saveBusy"
+                      @change="onPlatformToggle(server, 'codex', $event)"
+                    />
+                    <span></span>
+                  </label>
+                </div>
+              </td>
+              <td class="cell-platform">
+                <div class="platform-cell" :title="platformActive(server, 'gemini') ? t('components.mcp.status.active') : t('components.mcp.status.inactive')">
+                  <span class="platform-dot" :class="{ active: platformActive(server, 'gemini') }"></span>
+                  <label class="mac-switch sm">
+                    <input
+                      type="checkbox"
+                      :checked="platformEnabled(server, 'gemini')"
+                      :disabled="saveBusy"
+                      @change="onPlatformToggle(server, 'gemini', $event)"
+                    />
+                    <span></span>
+                  </label>
+                </div>
+              </td>
+              <td class="cell-actions">
+                <button class="ghost-icon" :aria-label="t('components.mcp.list.edit')" @click="openEditModal(server)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M16.474 5.408l2.118 2.117m-.756-3.982L12.109 9.27a2.118 2.118 0 00-.58 1.082L11 13l2.648-.53c.41-.082.786-.283 1.082-.579l5.727-5.727a1.853 1.853 0 10-2.621-2.621z"
+                      fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                    <path d="M19 15v3a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h3" fill="none" stroke="currentColor"
+                      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button class="ghost-icon" :aria-label="t('components.mcp.list.delete')" @click="requestDelete(server)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M9 3h6m-7 4h8m-6 0v11m4-11v11M5 7h14l-.867 12.138A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.862L5 7z"
+                      fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -137,16 +200,43 @@
           <BaseTextarea v-model="modalState.form.argsText" :placeholder="t('components.mcp.form.argsHint')"
             :disabled="saveBusy" rows="5" />
         </label>
+        <label v-if="modalState.form.type === 'stdio'" class="form-field">
+          <span>{{ t('components.mcp.form.cwd') }}</span>
+          <BaseInput v-model="modalState.form.cwd" type="text" :disabled="saveBusy" :placeholder="t('components.mcp.form.cwdHint')" />
+        </label>
         <label v-if="modalState.form.type === 'http'" class="form-field">
           <span>{{ t('components.mcp.form.url') }}</span>
           <BaseInput v-model="modalState.form.url" type="text" :disabled="saveBusy" />
+        </label>
+        <div v-if="modalState.form.type === 'http'" class="form-field">
+          <span>{{ t('components.mcp.form.headers') }}</span>
+          <div class="env-table">
+            <div v-for="entry in modalState.form.headersEntries" :key="entry.id" class="env-row">
+              <BaseInput v-model="entry.key" :placeholder="t('components.mcp.form.headerKey')" :disabled="saveBusy" />
+              <BaseInput v-model="entry.value" :placeholder="t('components.mcp.form.headerValue')" :disabled="saveBusy" />
+              <button class="ghost-icon" type="button" :aria-label="t('components.mcp.form.headerRemove')"
+                :disabled="modalState.form.headersEntries.length === 1 || saveBusy" @click="removeHeaderEntry(entry.id)">
+                ✕
+              </button>
+            </div>
+          </div>
+          <BaseButton variant="outline" type="button" class="env-add" :disabled="saveBusy" @click="addHeaderEntry()">
+            {{ t('components.mcp.form.headerAdd') }}
+          </BaseButton>
+          <p class="field-hint">{{ t('components.mcp.form.headersHint') }}</p>
+        </div>
+        <label class="form-field">
+          <span>{{ t('components.mcp.form.startupTimeout') }}</span>
+          <input v-model.number="modalState.form.startupTimeoutSec" type="number" min="0" class="base-input"
+            :disabled="saveBusy" />
+          <p class="field-hint">{{ t('components.mcp.form.startupTimeoutHint') }}</p>
         </label>
         <label class="form-field">
           <span>{{ t('components.mcp.form.tips') }}</span>
           <BaseTextarea v-model="modalState.form.tips" :placeholder="t('components.mcp.form.tipsHint')"
             :disabled="saveBusy" rows="4" />
         </label>
-        <div class="form-field">
+        <div v-if="modalState.form.type === 'stdio'" class="form-field">
           <span>{{ t('components.mcp.form.env') }}</span>
           <div class="env-table">
             <div v-for="entry in modalState.form.envEntries" :key="entry.id" class="env-row">
@@ -265,7 +355,7 @@ import {
 import lobeIcons from '../../icons/lobeIconMap'
 import { showToast } from '../../utils/toast'
 
-type EnvEntry = {
+type KeyValueEntry = {
   id: number
   key: string
   value: string
@@ -275,11 +365,14 @@ type McpForm = {
   name: string
   type: McpServerType
   command: string
+  cwd: string
   url: string
+  startupTimeoutSec: number
   website: string
   tips: string
   argsText: string
-  envEntries: EnvEntry[]
+  envEntries: KeyValueEntry[]
+  headersEntries: KeyValueEntry[]
   enablePlatform: McpPlatform[]
 }
 
@@ -292,10 +385,10 @@ const errorMessage = ref('')
 const modalError = ref('')
 const placeholderRegex = /\{([a-zA-Z0-9_]+)\}/g
 
-let envEntryId = 0
+let entryId = 0
 
-const createEnvEntry = (key = '', value = ''): EnvEntry => ({
-  id: ++envEntryId,
+const createKeyValueEntry = (key = '', value = ''): KeyValueEntry => ({
+  id: ++entryId,
   key,
   value,
 })
@@ -304,11 +397,14 @@ const createEmptyForm = (): McpForm => ({
   name: '',
   type: 'stdio',
   command: '',
+  cwd: '',
   url: '',
+  startupTimeoutSec: 0,
   website: '',
   tips: '',
   argsText: '',
-  envEntries: [createEnvEntry()],
+  envEntries: [createKeyValueEntry()],
+  headersEntries: [createKeyValueEntry()],
   enablePlatform: [],
 })
 
@@ -356,7 +452,16 @@ const platformOptions = computed(() => [
   { id: 'gemini' as McpPlatform, label: t('components.mcp.platforms.gemini') },
 ])
 
-const formMissingPlaceholders = computed(() => detectPlaceholders(modalState.form.url, modalState.form.argsText))
+const formMissingPlaceholders = computed(() =>
+  detectPlaceholders(
+    modalState.form.url,
+    modalState.form.command,
+    modalState.form.argsText,
+    modalState.form.cwd,
+    modalState.form.envEntries,
+    modalState.form.headersEntries,
+  )
+)
 
 const loadServers = async () => {
   loading.value = true
@@ -366,7 +471,10 @@ const loadServers = async () => {
     servers.value = (data ?? []).map((item) => ({
       ...item,
       args: item.args ?? [],
+      cwd: item.cwd ?? '',
       env: item.env ?? {},
+      headers: item.headers ?? {},
+      startup_timeout_sec: item.startup_timeout_sec ?? 0,
       enable_platform: item.enable_platform ?? [],
       website: item.website ?? '',
       tips: item.tips ?? '',
@@ -517,11 +625,14 @@ const openEditModal = (server: McpServer) => {
     name: server.name,
     type: server.type,
     command: server.command ?? '',
+    cwd: server.cwd ?? '',
     url: server.url ?? '',
+    startupTimeoutSec: server.startup_timeout_sec ?? 0,
     website: server.website ?? '',
     tips: server.tips ?? '',
     argsText: (server.args ?? []).join('\n'),
     envEntries: buildEnvEntries(server.env),
+    headersEntries: buildHeaderEntries(server.headers),
     enablePlatform: [...(server.enable_platform ?? [])],
   }
   // 初始化表单 JSON 编辑器状态
@@ -577,17 +688,24 @@ const toggleJsonLock = () => {
 
 const buildJsonFromForm = () => {
   const form = modalState.form
+  const startupTimeoutSec = Number(form.startupTimeoutSec) || 0
   if (form.type === 'http') {
+    const headers = parseKeyValueEntries(form.headersEntries)
     return {
       type: 'http',
       url: form.url.trim(),
+      ...(Object.keys(headers).length ? { headers } : {}),
+      ...(startupTimeoutSec > 0 ? { startup_timeout_sec: startupTimeoutSec } : {}),
     }
   }
+  const env = parseKeyValueEntries(form.envEntries)
   return {
     type: 'stdio',
     command: form.command.trim(),
     args: parseArgs(form.argsText),
-    env: parseEnv(form.envEntries),
+    ...(form.cwd.trim() ? { cwd: form.cwd.trim() } : {}),
+    ...(Object.keys(env).length ? { env } : {}),
+    ...(startupTimeoutSec > 0 ? { startup_timeout_sec: startupTimeoutSec } : {}),
   }
 }
 
@@ -643,22 +761,59 @@ const parseJsonArgs = (value: unknown): string[] => {
     .filter(Boolean)
 }
 
-const parseJsonEnv = (value: unknown): Record<string, string> => {
+const parseJsonStringMap = (value: unknown, errorMessage: string): Record<string, string> => {
   if (value === undefined) return {}
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(t('components.mcp.form.jsonEditor.errors.envInvalid'))
+    throw new Error(errorMessage)
   }
 
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof v !== 'string') {
-      throw new Error(t('components.mcp.form.jsonEditor.errors.envInvalid'))
-    }
     const key = k.trim()
     if (!key) continue
-    out[key] = v
+    if (v === null || v === undefined) continue
+    if (typeof v === 'string') {
+      out[key] = v
+      continue
+    }
+    if (typeof v === 'number' || typeof v === 'boolean') {
+      out[key] = String(v)
+      continue
+    }
+    throw new Error(errorMessage)
   }
   return out
+}
+
+const parseJsonEnv = (value: unknown): Record<string, string> =>
+  parseJsonStringMap(value, t('components.mcp.form.jsonEditor.errors.envInvalid'))
+
+const parseJsonHeaders = (value: unknown): Record<string, string> =>
+  parseJsonStringMap(value, t('components.mcp.form.jsonEditor.errors.headersInvalid'))
+
+const parseJsonCwd = (value: unknown): string => {
+  if (value === undefined) return ''
+  if (typeof value !== 'string') {
+    throw new Error(t('components.mcp.form.jsonEditor.errors.cwdInvalid'))
+  }
+  return value.trim()
+}
+
+const parseJsonStartupTimeoutSec = (value: unknown): number => {
+  if (value === undefined) return 0
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return 0
+    const parsed = Number(trimmed)
+    if (!Number.isFinite(parsed)) {
+      throw new Error(t('components.mcp.form.jsonEditor.errors.startupTimeoutInvalid'))
+    }
+    return Math.max(0, Math.floor(parsed))
+  }
+  throw new Error(t('components.mcp.form.jsonEditor.errors.startupTimeoutInvalid'))
 }
 
 const applyJsonToForm = () => {
@@ -675,12 +830,15 @@ const applyJsonToForm = () => {
     formJsonError.value = t('components.mcp.form.jsonEditor.errors.typeRequired')
     return
   }
-  if (typeValue !== 'stdio' && typeValue !== 'http') {
+  const normalizedType = typeValue === 'sse' || typeValue === 'streamable_http' || typeValue === 'streamable-http'
+    ? 'http'
+    : typeValue
+  if (normalizedType !== 'stdio' && normalizedType !== 'http') {
     formJsonError.value = t('components.mcp.form.jsonEditor.errors.typeInvalid')
     return
   }
 
-  if (typeValue === 'stdio') {
+  if (normalizedType === 'stdio') {
     const command = typeof data.command === 'string' ? data.command.trim() : ''
     if (!command) {
       formJsonError.value = t('components.mcp.form.jsonEditor.errors.commandRequired')
@@ -689,10 +847,15 @@ const applyJsonToForm = () => {
     try {
       const args = parseJsonArgs(data.args)
       const env = parseJsonEnv(data.env)
+      const cwd = parseJsonCwd(data.cwd)
+      const startupTimeoutSec = parseJsonStartupTimeoutSec((data as any).startup_timeout_sec)
       modalState.form.type = 'stdio'
       modalState.form.command = command
       modalState.form.argsText = args.join('\n')
       modalState.form.envEntries = buildEnvEntries(env)
+      modalState.form.cwd = cwd
+      modalState.form.startupTimeoutSec = startupTimeoutSec
+      modalState.form.headersEntries = [createKeyValueEntry()]
     } catch (error) {
       formJsonError.value = error instanceof Error ? error.message : t('components.mcp.form.jsonEditor.errors.applyFailed')
       return
@@ -703,9 +866,23 @@ const applyJsonToForm = () => {
       formJsonError.value = t('components.mcp.form.jsonEditor.errors.urlRequired')
       return
     }
+    let headers: Record<string, string> = {}
+    let startupTimeoutSec = 0
+    try {
+      headers = parseJsonHeaders((data as any).headers)
+      startupTimeoutSec = parseJsonStartupTimeoutSec((data as any).startup_timeout_sec)
+    } catch (error) {
+      formJsonError.value = error instanceof Error ? error.message : t('components.mcp.form.jsonEditor.errors.applyFailed')
+      return
+    }
     modalState.form.type = 'http'
     modalState.form.url = url
-    // HTTP 类型下允许 env/args，但应用时忽略
+    modalState.form.headersEntries = buildHeaderEntries(headers)
+    modalState.form.startupTimeoutSec = startupTimeoutSec
+    modalState.form.command = ''
+    modalState.form.argsText = ''
+    modalState.form.cwd = ''
+    modalState.form.envEntries = [createKeyValueEntry()]
   }
 
   // 先统一格式，避免缩进差异导致 dirty 误判
@@ -728,13 +905,13 @@ watch(
 const buildEnvEntries = (env: Record<string, string> | undefined) => {
   const entries = Object.entries(env ?? {})
   if (!entries.length) {
-    return [createEnvEntry()]
+    return [createKeyValueEntry()]
   }
-  return entries.map(([key, value]) => createEnvEntry(key, value))
+  return entries.map(([key, value]) => createKeyValueEntry(key, value))
 }
 
 const addEnvEntry = () => {
-  modalState.form.envEntries.push(createEnvEntry())
+  modalState.form.envEntries.push(createKeyValueEntry())
 }
 
 const removeEnvEntry = (id: number) => {
@@ -742,6 +919,26 @@ const removeEnvEntry = (id: number) => {
   const index = modalState.form.envEntries.findIndex((entry) => entry.id === id)
   if (index !== -1) {
     modalState.form.envEntries.splice(index, 1)
+  }
+}
+
+const buildHeaderEntries = (headers: Record<string, string> | undefined) => {
+  const entries = Object.entries(headers ?? {})
+  if (!entries.length) {
+    return [createKeyValueEntry()]
+  }
+  return entries.map(([key, value]) => createKeyValueEntry(key, value))
+}
+
+const addHeaderEntry = () => {
+  modalState.form.headersEntries.push(createKeyValueEntry())
+}
+
+const removeHeaderEntry = (id: number) => {
+  if (modalState.form.headersEntries.length === 1) return
+  const index = modalState.form.headersEntries.findIndex((entry) => entry.id === id)
+  if (index !== -1) {
+    modalState.form.headersEntries.splice(index, 1)
   }
 }
 
@@ -798,13 +995,19 @@ const submitModal = async () => {
     return
   }
 
+  const startupTimeoutSec = Number(form.startupTimeoutSec) || 0
+  const env = form.type === 'stdio' ? parseKeyValueEntries(form.envEntries) : {}
+  const headers = form.type === 'http' ? parseKeyValueEntries(form.headersEntries) : {}
   const payload: McpServer = {
     name: trimmedName,
     type: form.type,
     command: form.type === 'stdio' ? form.command.trim() : '',
-    args: parseArgs(form.argsText),
-    env: parseEnv(form.envEntries),
+    args: form.type === 'stdio' ? parseArgs(form.argsText) : [],
+    cwd: form.type === 'stdio' ? form.cwd.trim() : '',
+    env,
     url: form.type === 'http' ? form.url.trim() : '',
+    headers,
+    ...(startupTimeoutSec > 0 ? { startup_timeout_sec: startupTimeoutSec } : {}),
     website: form.website.trim(),
     tips: form.tips.trim(),
     enable_platform: [...form.enablePlatform],
@@ -856,7 +1059,7 @@ const parseArgs = (value: string) =>
     .map((line) => line.trim())
     .filter(Boolean)
 
-const parseEnv = (entries: EnvEntry[]) => {
+const parseKeyValueEntries = (entries: KeyValueEntry[]) => {
   return entries.reduce<Record<string, string>>((acc, entry) => {
     const key = entry.key.trim()
     if (!key) return acc
@@ -869,14 +1072,29 @@ const reload = async () => {
   await loadServers()
 }
 
-const detectPlaceholders = (url: string, argsText: string) => {
+const detectPlaceholders = (
+  url: string,
+  command: string,
+  argsText: string,
+  cwd: string,
+  envEntries: KeyValueEntry[],
+  headerEntries: KeyValueEntry[],
+) => {
   const set = new Set<string>()
   collectPlaceholders(url, set)
+  collectPlaceholders(command, set)
+  collectPlaceholders(cwd, set)
   argsText
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .forEach((line) => collectPlaceholders(line, set))
+  envEntries.forEach((entry) => {
+    collectPlaceholders(entry.value, set)
+  })
+  headerEntries.forEach((entry) => {
+    collectPlaceholders(entry.value, set)
+  })
   return Array.from(set)
 }
 
@@ -908,6 +1126,145 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.08);
   font-size: 12px;
   text-transform: uppercase;
+}
+
+.mcp-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mcp-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.mcp-table th,
+.mcp-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+.mcp-table th {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: left;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.col-name {
+  width: 340px;
+}
+
+.col-type {
+  width: 120px;
+}
+
+.col-endpoint {
+  width: 320px;
+}
+
+.col-platform {
+  width: 120px;
+  text-align: center;
+}
+
+.cell-platform {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.cell-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.name-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.name-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.name-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.server-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(244, 67, 54, 0.18);
+  color: #ff9b9b;
+}
+
+.endpoint-main {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  word-break: break-all;
+}
+
+.endpoint-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-item {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.platform-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.platform-dot.active {
+  background: #4ade80;
 }
 
 .automation-card {
@@ -1009,6 +1366,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.field-hint {
+  margin-top: 0.25rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .form-row {

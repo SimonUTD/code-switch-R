@@ -105,6 +105,12 @@ func main() {
 	settingsService := services.NewSettingsService()
 	autoStartService := services.NewAutoStartService()
 	appSettings := services.NewAppSettingsService(autoStartService)
+
+	// 启动时预加载 app settings：同步代理/日志开关等运行时配置，避免等到前端首次读取才生效
+	if _, err := appSettings.GetAppSettings(); err != nil {
+		log.Printf("读取应用设置失败（使用默认值）: %v", err)
+	}
+
 	notificationService := services.NewNotificationService(appSettings) // 通知服务
 	blacklistService := services.NewBlacklistService(settingsService, notificationService)
 	geminiService := services.NewGeminiService("127.0.0.1:18100")
