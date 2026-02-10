@@ -384,6 +384,71 @@ onActivated(() => {
   color: var(--mac-text-secondary);
 }
 
+.speedtest-table-wrapper {
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  overflow-x: auto;
+  background: var(--mac-surface);
+  margin-top: 12px;
+}
+
+.speedtest-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.speedtest-table th,
+.speedtest-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
+  vertical-align: middle;
+}
+
+.speedtest-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+  text-align: left;
+  background: color-mix(in srgb, var(--mac-surface) 75%, transparent);
+}
+
+.speedtest-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--mac-surface) 70%, rgba(255, 255, 255, 0.04));
+}
+
+.col-url {
+  width: 520px;
+}
+
+.col-source {
+  width: 220px;
+}
+
+.col-result {
+  width: 180px;
+  text-align: right;
+}
+
+.col-actions {
+  width: 88px;
+}
+
+.cell-result {
+  text-align: right;
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--mac-text-secondary);
+  padding: 18px 12px;
+}
+
 .endpoint-list {
   display: flex;
   flex-direction: column;

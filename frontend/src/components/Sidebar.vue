@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Browser } from '@wailsio/runtime'
 import { fetchCurrentVersion } from '../services/version'
 import { getUpdateState, type UpdateState } from '../services/update'
-import Badge from './ui/Badge.vue'
+ 
 
 const router = useRouter()
 const route = useRoute()
@@ -77,9 +77,7 @@ onUnmounted(() => {
 // 侧边栏收起状态
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
 const SIDEBAR_GROUP_COLLAPSED_KEY = 'sidebar-group-collapsed'
-const VISITED_PAGES_KEY = 'visited-pages'
 const isCollapsed = ref(false)
-const visitedPages = ref<Set<string>>(new Set())
 const collapsedGroups = ref<Set<string>>(new Set())
 
 onMounted(() => {
@@ -87,15 +85,6 @@ onMounted(() => {
   const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
   if (saved !== null) {
     isCollapsed.value = saved === 'true'
-  }
-  // 加载已访问页面
-  const visitedJson = localStorage.getItem(VISITED_PAGES_KEY)
-  if (visitedJson) {
-    try {
-      visitedPages.value = new Set(JSON.parse(visitedJson))
-    } catch {
-      visitedPages.value = new Set()
-    }
   }
   // 加载折叠的分组
   const groupsJson = localStorage.getItem(SIDEBAR_GROUP_COLLAPSED_KEY)
@@ -106,26 +95,7 @@ onMounted(() => {
       collapsedGroups.value = new Set()
     }
   }
-  // 标记当前页面为已访问
-  markAsVisited(route.path)
 })
-
-// 监听路由变化，标记为已访问
-watch(() => route.path, (newPath) => {
-  markAsVisited(newPath)
-})
-
-function markAsVisited(path: string) {
-  if (!visitedPages.value.has(path)) {
-    visitedPages.value.add(path)
-    localStorage.setItem(VISITED_PAGES_KEY, JSON.stringify([...visitedPages.value]))
-  }
-}
-
-// 判断是否显示 NEW 徽章（仅在未访问时显示）
-function shouldShowNew(item: NavItem): boolean {
-  return item.isNew === true && !visitedPages.value.has(item.path)
-}
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
@@ -149,7 +119,6 @@ interface NavItem {
   path: string
   icon: string
   labelKey: string
-  isNew?: boolean
 }
 
 interface NavGroup {
@@ -179,7 +148,7 @@ const navGroups: NavGroup[] = [
       { path: '/', icon: 'grid', labelKey: 'sidebar.providers' },
       { path: '/mcp', icon: 'plug', labelKey: 'sidebar.mcp' },
       { path: '/skill', icon: 'tool', labelKey: 'sidebar.skill' },
-      { path: '/prompts', icon: 'file-text', labelKey: 'sidebar.prompts', isNew: true },
+      { path: '/prompts', icon: 'file-text', labelKey: 'sidebar.prompts' },
     ]
   },
   {
@@ -188,9 +157,9 @@ const navGroups: NavGroup[] = [
     icon: 'shield',
     collapsible: true,
     items: [
-      { path: '/rules', icon: 'star', labelKey: 'sidebar.rules', isNew: true },
-      { path: '/mitm-poc', icon: 'shield', labelKey: 'dashboard.mitm.controls', isNew: true },
-      { path: '/logs/terminal', icon: 'terminal', labelKey: 'sidebar.terminal_logs', isNew: true },
+      { path: '/rules', icon: 'star', labelKey: 'sidebar.rules' },
+      { path: '/mitm-poc', icon: 'shield', labelKey: 'dashboard.mitm.controls' },
+      { path: '/logs/terminal', icon: 'terminal', labelKey: 'sidebar.terminal_logs' },
     ]
   },
   {
@@ -200,9 +169,9 @@ const navGroups: NavGroup[] = [
     collapsible: true,
     items: [
       { path: '/settings', icon: 'settings', labelKey: 'sidebar.settings' },
-      { path: '/env', icon: 'search', labelKey: 'sidebar.env', isNew: true },
-      { path: '/speedtest', icon: 'zap', labelKey: 'sidebar.speedtest', isNew: true },
-      { path: '/availability', icon: 'activity', labelKey: 'sidebar.availability', isNew: true },
+      { path: '/env', icon: 'search', labelKey: 'sidebar.env' },
+      { path: '/speedtest', icon: 'zap', labelKey: 'sidebar.speedtest' },
+      { path: '/availability', icon: 'activity', labelKey: 'sidebar.availability' },
       { path: '/logs', icon: 'bar-chart', labelKey: 'sidebar.request_logs' },
         { path: '/console', icon: 'terminal', labelKey: 'sidebar.console' },
     ]
@@ -354,7 +323,6 @@ const navigate = (path: string) => {
             </svg>
 
             <span class="nav-label" v-if="!isCollapsed">{{ t(item.labelKey) }}</span>
-            <Badge v-if="shouldShowNew(item) && !isCollapsed" variant="success" size="sm">NEW</Badge>
           </button>
         </div>
       </div>

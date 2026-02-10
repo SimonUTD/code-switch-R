@@ -7,6 +7,7 @@
 - **UI**：MCP 列表 / 测速 URL / 可用性监控 / 供应商列表改为表格布局，节省屏幕空间
 - **看板折线图**：新增范围切换（当天/3/7/14天），默认 7 天；消费明细弹窗随范围刷新
 - **Windows 编译**：修复 Wails bindings 生成差异导致的 TypeScript 类型不兼容（Gemini Provider envConfig / Prompts map）
+- **UI 细节修复**：看板金额卡片不再显示日期范围；长 URL/供应商名自动省略；MCP/测速/监控表格边框对齐；侧边栏移除 NEW 标签；设置页提示文案可换行
 
 ---
 

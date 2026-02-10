@@ -625,22 +625,9 @@ const startOfTodayLocal = () => {
 
 const scopeHint = computed(() => {
   if (usageRangeDays.value <= 1) {
-    const firstBucket = statsSeries.value.find((item) => item.day)
-    const parsed = parseLogDate(firstBucket?.day ?? '')
-    const date = parsed ?? startOfTodayLocal()
-    const dateLabel = `${date.getFullYear()}-${padHour(date.getMonth() + 1)}-${padHour(date.getDate())}`
-    return t('components.logs.summary.todayScope', { date: dateLabel })
+    return t('dashboard.usageRange.today')
   }
-
-  const series = statsSeries.value
-  const start = series[0]?.day ?? ''
-  const end = series[series.length - 1]?.day ?? ''
-  if (!start || !end) return ''
-  return t('components.logs.summary.rangeScope', {
-    days: usageRangeDays.value,
-    start,
-    end,
-  })
+  return t('dashboard.usageRange.recentDays', { days: usageRangeDays.value })
 })
 
 const usageStatsCards = computed(() => {

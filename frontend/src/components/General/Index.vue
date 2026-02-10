@@ -851,7 +851,8 @@ onUnmounted(() => {
   line-height: 1.4;
   max-width: 320px;
   text-align: right;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 :global(.dark) .hint-text {

@@ -76,7 +76,8 @@
       "today": "当天",
       "days3": "3天",
       "days7": "7天",
-      "days14": "14天"
+      "days14": "14天",
+      "recentDays": "近 {days} 天"
     },
     "system": {
       "relay": "代理中继",
@@ -229,7 +230,13 @@
     "start": "开始测试",
     "testing": "测试中",
     "empty": "添加 API 端点开始测试",
+    "remove": "移除",
     "failed": "失败",
+    "columns": {
+      "url": "URL",
+      "source": "来源",
+      "result": "结果"
+    },
     "syncButton": "刷新供应商端点",
     "syncing": "同步中...",
     "loadingTip": "正在从首页同步供应商端点...",

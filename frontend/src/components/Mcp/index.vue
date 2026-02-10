@@ -1123,16 +1123,18 @@ onMounted(() => {
 .chip {
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--mac-border) 75%, transparent);
+  background: color-mix(in srgb, var(--mac-surface) 80%, transparent);
   font-size: 12px;
   text-transform: uppercase;
+  color: var(--mac-text-secondary);
 }
 
 .mcp-table-wrapper {
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--mac-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--mac-surface);
 }
 
 .mcp-table {
@@ -1144,16 +1146,20 @@ onMounted(() => {
 .mcp-table th,
 .mcp-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
   vertical-align: top;
 }
 
 .mcp-table th {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--mac-text-secondary);
   text-align: left;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--mac-surface) 75%, transparent);
+}
+
+.mcp-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--mac-surface) 70%, rgba(255, 255, 255, 0.04));
 }
 
 .col-name {

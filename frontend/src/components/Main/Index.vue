@@ -3102,8 +3102,18 @@ const confirmDeleteCliTool = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
+}
+
+.card-title {
+  margin: 0;
+  font-weight: 600;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .provider-subtitle {
@@ -3112,7 +3122,7 @@ const confirmDeleteCliTool = async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 520px;
+  max-width: 100%;
 }
 
 .mono-text {

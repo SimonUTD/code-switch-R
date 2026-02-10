@@ -76,7 +76,8 @@
       "today": "Today",
       "days3": "3D",
       "days7": "7D",
-      "days14": "14D"
+      "days14": "14D",
+      "recentDays": "Last {days} days"
     },
     "system": {
       "relay": "Proxy Relay",
@@ -229,7 +230,13 @@
     "start": "Start Test",
     "testing": "Testing",
     "empty": "Add API endpoints to start testing",
+    "remove": "Remove",
     "failed": "Failed",
+    "columns": {
+      "url": "URL",
+      "source": "Source",
+      "result": "Result"
+    },
     "syncButton": "Refresh Provider Endpoints",
     "syncing": "Syncing...",
     "loadingTip": "Syncing provider endpoints from home page...",
