@@ -53,6 +53,25 @@ type ProviderRelayService struct {
 // errClientAbort 表示客户端中断连接，不应计入 provider 失败次数
 var errClientAbort = errors.New("client aborted, skip failure count")
 
+// isLikelyClientDisconnect 判断是否为典型的客户端断开/取消导致的写入失败。
+// 这类错误在用户取消请求、切换页面、网络波动时很常见，通常不需要刷屏 WARN。
+func isLikelyClientDisconnect(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, net.ErrClosed) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "connection reset by peer") ||
+		strings.Contains(msg, "use of closed network connection") ||
+		strings.Contains(msg, "client disconnected") ||
+		strings.Contains(msg, "http2: stream closed") ||
+		strings.Contains(msg, "stream error") ||
+		strings.Contains(msg, "rst_stream")
+}
+
 // skipReasons tracks the count of providers skipped during filtering
 type skipReasons struct {
 	disabled         int // disabled or missing URL/APIKey
@@ -511,7 +530,7 @@ func (prs *ProviderRelayService) Start() error {
 	if warnings := prs.validateConfig(); len(warnings) > 0 {
 		fmt.Println("======== Provider 配置验证警告 ========")
 		for _, warn := range warnings {
-			fmt.Printf("⚠️  %s\n", warn)
+			fmt.Printf("[WARN] %s\n", warn)
 		}
 		fmt.Println("========================================")
 	}
@@ -668,21 +687,18 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 			// Config validation: auto-skip on failure
 			if errs := provider.ValidateConfiguration(); len(errs) > 0 {
-				fmt.Printf("[WARN] Provider %s config validation failed, skipped: %v\n", provider.Name, errs)
 				reasons.configInvalid++
 				continue
 			}
 
 			// Model filter: only keep providers supporting the requested model
 			if requestedModel != "" && !provider.IsModelSupported(requestedModel) {
-				fmt.Printf("[INFO] Provider %s does not support model %s, skipped\n", provider.Name, requestedModel)
 				reasons.modelUnsupported++
 				continue
 			}
 
 			// Blacklist check: skip blacklisted providers
-			if isBlacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
-				fmt.Printf("⛔ Provider %s blacklisted until %v\n", provider.Name, until.Format("15:04:05"))
+			if isBlacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
 				reasons.blacklisted++
 				continue
 			}
@@ -696,21 +712,11 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			return
 		}
 
-		// Build provider names list
-		providerNames := make([]string, len(active))
-		for i, p := range active {
-			providerNames[i] = p.Name
-		}
-		fmt.Printf("[INFO] Providers: total=%d, active=%d, skipped=%d (disabled=%d, config=%d, model=%d, blacklist=%d): %s\n",
-			len(providers), len(active), reasons.total(),
-			reasons.disabled, reasons.configInvalid, reasons.modelUnsupported, reasons.blacklisted,
-			strings.Join(providerNames, ", "))
-		fmt.Println()
-
 		// 【5分钟同源缓存】检查是否有缓存的 provider
 		cachedProviderName := ""
+		var cachedProviderHitCount int64
 		if prs.affinityManager != nil {
-			cachedProviderName = prs.affinityManager.Get(affinityKey)
+			cachedProviderName, cachedProviderHitCount = prs.affinityManager.GetWithHitCount(affinityKey)
 		}
 
 		// 按 Level 分组
@@ -730,8 +736,6 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 		}
 		sort.Ints(levels)
 
-		fmt.Printf("[INFO] 共 %d 个 Level 分组：%v\n", len(levels), levels)
-
 		query := flattenQuery(c.Request.URL.Query())
 		clientHeaders := cloneHeaders(c.Request.Header)
 		// 注意：认证方式在每个 provider 转发时由 determineAuthMethod() 动态计算
@@ -743,14 +747,10 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 		// 设计目标：Claude Code 单次请求最多重试 3 次，但拉黑阈值可能是 5
 		// 通过内部重试机制，在单次请求中累积足够失败次数触发拉黑
 		if blacklistEnabled {
-			fmt.Printf("[INFO] 🔒 拉黑模式已开启（同 Provider 重试到拉黑再切换）\n")
-
 			// 获取重试配置
 			retryConfig := prs.blacklistService.GetRetryConfig()
 			maxRetryPerProvider := retryConfig.FailureThreshold
 			retryWaitSeconds := retryConfig.RetryWaitSeconds
-			fmt.Printf("[INFO] 重试配置: 每 Provider 最多 %d 次重试，间隔 %d 秒\n",
-				maxRetryPerProvider, retryWaitSeconds)
 
 			var lastError error
 			var lastProvider string
@@ -759,12 +759,10 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			// 遍历所有 Level 和 Provider
 			for _, level := range levels {
 				providersInLevel := levelGroups[level]
-				fmt.Printf("[INFO] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
 
 				for _, provider := range providersInLevel {
 					// 检查是否已被拉黑（跳过已拉黑的 provider）
-					if blacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-						fmt.Printf("[INFO] ⏭️ 跳过已拉黑的 Provider: %s (解禁时间: %v)\n", provider.Name, until)
+					if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
 						continue
 					}
 
@@ -772,7 +770,6 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 					effectiveModel := provider.GetEffectiveModel(requestedModel)
 					currentBodyBytes := bodyBytes
 					if effectiveModel != requestedModel && requestedModel != "" {
-						fmt.Printf("[INFO] Provider %s 映射模型: %s -> %s\n", provider.Name, requestedModel, effectiveModel)
 						modifiedBody, err := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 						if err != nil {
 							fmt.Printf("[ERROR] 模型映射失败: %v，跳过此 Provider\n", err)
@@ -790,12 +787,8 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 						// 再次检查是否已被拉黑（重试过程中可能被拉黑）
 						if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-							fmt.Printf("[INFO] 🚫 Provider %s 已被拉黑，切换到下一个\n", provider.Name)
 							break
 						}
-
-						fmt.Printf("[INFO] [拉黑模式] Provider: %s (Level %d) | 尝试 %d/%d | Model: %s\n",
-							provider.Name, level, retryCount+1, maxRetryPerProvider, effectiveModel)
 
 						startTime := time.Now()
 						// 根据 Provider 配置决定认证方式（auto 时自动检测原始请求）
@@ -804,8 +797,11 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 						duration := time.Since(startTime)
 
 						if ok {
-							fmt.Printf("[INFO] ✓ 成功: %s | 尝试 %d 次 | 耗时: %.2fs\n",
-								provider.Name, retryCount+1, duration.Seconds())
+							// 降噪：仅当发生重试/切换时输出成功信息
+							if IsLoggingEnabled() && (retryCount > 0 || totalAttempts > 1) {
+								fmt.Printf("[INFO] 成功: %s | 尝试 %d 次 | 耗时: %.2fs\n",
+									provider.Name, retryCount+1, duration.Seconds())
+							}
 							if err := prs.blacklistService.RecordSuccess(kind, provider.Name); err != nil {
 								fmt.Printf("[WARN] 清零失败计数失败: %v\n", err)
 							}
@@ -821,12 +817,9 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 						if err != nil {
 							errorMsg = err.Error()
 						}
-						fmt.Printf("[WARN] ✗ 失败: %s | 尝试 %d/%d | 错误: %s | 耗时: %.2fs\n",
-							provider.Name, retryCount+1, maxRetryPerProvider, errorMsg, duration.Seconds())
 
 						// 客户端中断不计入失败次数，直接返回
 						if errors.Is(err, errClientAbort) {
-							fmt.Printf("[INFO] 客户端中断，停止重试\n")
 							return
 						}
 
@@ -836,14 +829,20 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 						}
 
 						// 检查是否刚被拉黑
-						if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-							fmt.Printf("[INFO] 🚫 Provider %s 达到失败阈值，已被拉黑，切换到下一个\n", provider.Name)
+						if blacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
+							fmt.Printf("[WARN] Provider %s 达到失败阈值，已被拉黑至 %v\n",
+								provider.Name, until.Format("15:04:05"))
 							break
+						}
+
+						// 降噪：仅在“本 Provider 最后一次重试仍失败”时输出一次 WARN
+						if retryCount == maxRetryPerProvider-1 {
+							fmt.Printf("[WARN] 失败: %s | 尝试 %d/%d | 错误: %s | 耗时: %.2fs\n",
+								provider.Name, retryCount+1, maxRetryPerProvider, errorMsg, duration.Seconds())
 						}
 
 						// 等待后重试（除非是最后一次）
 						if retryCount < maxRetryPerProvider-1 {
-							fmt.Printf("[INFO] ⏳ 等待 %d 秒后重试...\n", retryWaitSeconds)
 							time.Sleep(time.Duration(retryWaitSeconds) * time.Second)
 						}
 					}
@@ -851,7 +850,7 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			}
 
 			// 所有 Provider 都失败或被拉黑
-			fmt.Printf("[ERROR] 💥 拉黑模式：所有 Provider 都失败或被拉黑（共尝试 %d 次）\n", totalAttempts)
+			fmt.Printf("[ERROR] 拉黑模式：所有 Provider 都失败或被拉黑（共尝试 %d 次）\n", totalAttempts)
 
 			errorMsg := "未知错误"
 			if lastError != nil {
@@ -869,11 +868,6 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 		// 【降级模式】：拉黑功能关闭，失败自动尝试下一个 provider
 		roundRobinEnabled := prs.isRoundRobinEnabled()
-		if roundRobinEnabled {
-			fmt.Printf("[INFO] 🔄 降级模式 + 轮询负载均衡\n")
-		} else {
-			fmt.Printf("[INFO] 🔄 降级模式（顺序降级）\n")
-		}
 
 		var lastError error
 		var lastProvider string
@@ -883,7 +877,7 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 		// 【5分钟同源缓存】如果有缓存的 provider，优先尝试
 		if cachedProviderName != "" {
 			affinityResult := prs.tryAffinityProvider(
-				c, kind, affinityKey, cachedProviderName, active,
+				c, kind, affinityKey, cachedProviderName, cachedProviderHitCount, active,
 				endpoint, query, clientHeaders, bodyBytes, isStream, requestedModel,
 			)
 			if affinityResult.Handled {
@@ -905,12 +899,9 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				providersInLevel = prs.roundRobinOrder(kind, level, providersInLevel)
 			}
 
-			fmt.Printf("[INFO] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
-
 			for i, provider := range providersInLevel {
 				// 【5分钟同源缓存】跳过已经尝试过的缓存 provider
 				if provider.Name == cachedProviderName {
-					fmt.Printf("[INFO]   跳过已尝试的缓存 provider: %s\n", provider.Name)
 					continue
 				}
 
@@ -922,8 +913,6 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				// 如果需要映射，修改请求体
 				currentBodyBytes := bodyBytes
 				if effectiveModel != requestedModel && requestedModel != "" {
-					fmt.Printf("[INFO] Provider %s 映射模型: %s -> %s\n", provider.Name, requestedModel, effectiveModel)
-
 					modifiedBody, err := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 					if err != nil {
 						fmt.Printf("[ERROR] 替换模型名失败: %v\n", err)
@@ -932,8 +921,6 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 					}
 					currentBodyBytes = modifiedBody
 				}
-
-				fmt.Printf("[INFO]   [%d/%d] Provider: %s | Model: %s\n", i+1, len(providersInLevel), provider.Name, effectiveModel)
 
 				// 尝试发送请求
 				// 获取有效的端点（用户配置优先）
@@ -945,7 +932,11 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				duration := time.Since(startTime)
 
 				if ok {
-					fmt.Printf("[INFO]   ✓ Level %d 成功: %s | 耗时: %.2fs\n", level, provider.Name, duration.Seconds())
+					// 降噪：仅当发生切换/重试时输出成功信息
+					if IsLoggingEnabled() && totalAttempts > 1 {
+						fmt.Printf("[INFO] 成功: %s | Level %d | 尝试 %d 次 | 耗时: %.2fs\n",
+							provider.Name, level, totalAttempts, duration.Seconds())
+					}
 
 					// 【5分钟同源缓存】设置缓存亲和性
 					if prs.affinityManager != nil {
@@ -972,12 +963,11 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				if err != nil {
 					errorMsg = err.Error()
 				}
-				fmt.Printf("[WARN]   ✗ Level %d 失败: %s | 错误: %s | 耗时: %.2fs\n",
+				fmt.Printf("[WARN] Level %d 失败: %s | 错误: %s | 耗时: %.2fs\n",
 					level, provider.Name, errorMsg, duration.Seconds())
 
 				// 客户端中断不计入失败次数
 				if errors.Is(err, errClientAbort) {
-					fmt.Printf("[INFO] 客户端中断，跳过失败计数: %s\n", provider.Name)
 				} else if err := prs.blacklistService.RecordFailure(kind, provider.Name); err != nil {
 					fmt.Printf("[ERROR] 记录失败到黑名单失败: %v\n", err)
 				}
@@ -1225,11 +1215,9 @@ func (prs *ProviderRelayService) forwardRequest(
 	if err != nil {
 		// 检查是否是 context 超时或取消
 		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Printf("[INFO] Provider %s 请求超时（context deadline exceeded）\n", provider.Name)
 			return false, fmt.Errorf("request timeout: %w", err)
 		}
 		if errors.Is(err, context.Canceled) {
-			fmt.Printf("[INFO] Provider %s 请求被取消（context canceled）\n", provider.Name)
 			return false, fmt.Errorf("%w: %v", errClientAbort, err)
 		}
 		// 响应存在但状态码为0：可能是客户端中断
@@ -1267,7 +1255,7 @@ func (prs *ProviderRelayService) forwardRequest(
 	// 这是防御性编程，确保即使遇到异常状态码也能正常处理
 	if status == 0 {
 		fmt.Printf("[WARN] Provider %s 返回状态码 0，但无错误，当作成功处理\n", provider.Name)
-		if copyErr := writeProxiedResponseWithCollector(c, httpResp, kind, requestLog, responseCollector); copyErr != nil {
+		if copyErr := writeProxiedResponseWithCollector(c, httpResp, kind, requestLog, responseCollector); copyErr != nil && !isLikelyClientDisconnect(copyErr) {
 			fmt.Printf("[WARN] 复制响应到客户端失败（不影响provider成功判定）: %v\n", copyErr)
 		}
 		// responseWritten: always true after writeProxiedResponseWithCollector returns
@@ -1275,7 +1263,7 @@ func (prs *ProviderRelayService) forwardRequest(
 	}
 
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
-		if copyErr := writeProxiedResponseWithCollector(c, httpResp, kind, requestLog, responseCollector); copyErr != nil {
+		if copyErr := writeProxiedResponseWithCollector(c, httpResp, kind, requestLog, responseCollector); copyErr != nil && !isLikelyClientDisconnect(copyErr) {
 			fmt.Printf("[WARN] 复制响应到客户端失败（不影响provider成功判定）: %v\n", copyErr)
 		}
 		// 只要provider返回了2xx状态码，就算成功（复制失败是客户端问题，不是provider问题）
@@ -1500,6 +1488,7 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 	kind string,
 	affinityKey string,
 	cachedProviderName string,
+	cachedProviderHitCount int64,
 	activeProviders []Provider,
 	endpoint string,
 	query map[string]string,
@@ -1514,7 +1503,12 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 		return result
 	}
 
-	fmt.Printf("[INFO] 🎯 发现缓存的 provider: %s，优先尝试\n", cachedProviderName)
+	// 缓存命中日志只在“首次命中/Provider 变化”时输出，避免每次请求刷屏
+	// 约定：CacheAffinityManager.Set() 初始 RequestCount=1，因此首次 Get() 后 hitCount==2
+	shouldLogAffinityHit := IsLoggingEnabled() && cachedProviderHitCount == 2
+	if shouldLogAffinityHit {
+		fmt.Printf("[INFO] 发现缓存的 provider: %s，优先尝试\n", cachedProviderName)
+	}
 
 	// 查找缓存的 provider
 	var cachedProvider *Provider
@@ -1526,7 +1520,13 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 	}
 
 	if cachedProvider == nil {
-		fmt.Printf("[INFO] 缓存的 provider %s 不在可用列表中，跳过\n", cachedProviderName)
+		// 缓存的 provider 不可用：清除缓存，避免每次请求都重复命中同一条无效缓存
+		if prs.affinityManager != nil {
+			prs.affinityManager.Invalidate(affinityKey)
+		}
+		if shouldLogAffinityHit {
+			fmt.Printf("[INFO] 缓存的 provider %s 不在可用列表中，已清除缓存\n", cachedProviderName)
+		}
 		return result
 	}
 
@@ -1537,7 +1537,9 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 	currentBodyBytes := bodyBytes
 
 	if effectiveModel != requestedModel && requestedModel != "" {
-		fmt.Printf("[INFO] Provider %s 映射模型: %s -> %s\n", cachedProvider.Name, requestedModel, effectiveModel)
+		if shouldLogAffinityHit {
+			fmt.Printf("[INFO] Provider %s 映射模型: %s -> %s\n", cachedProvider.Name, requestedModel, effectiveModel)
+		}
 		modifiedBody, modErr := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 		if modErr == nil {
 			currentBodyBytes = modifiedBody
@@ -1552,7 +1554,9 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 	result.Duration = time.Since(startTime)
 
 	if ok {
-		fmt.Printf("[INFO] ✓ 缓存命中成功: %s | 耗时: %.2fs\n", cachedProvider.Name, result.Duration.Seconds())
+		if shouldLogAffinityHit {
+			fmt.Printf("[INFO] 缓存命中成功: %s | 耗时: %.2fs\n", cachedProvider.Name, result.Duration.Seconds())
+		}
 
 		// 刷新缓存（延长 TTL）
 		if prs.affinityManager != nil {
@@ -1567,13 +1571,6 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 		return result
 	}
 
-	// 缓存的 provider 失败，清除缓存
-	fmt.Printf("[WARN] ✗ 缓存的 provider 失败: %s | 错误: %v | 耗时: %.2fs\n",
-		cachedProvider.Name, err, result.Duration.Seconds())
-	if prs.affinityManager != nil {
-		prs.affinityManager.Invalidate(affinityKey)
-	}
-
 	result.LastError = err
 
 	// 客户端中断不计入失败次数
@@ -1581,6 +1578,13 @@ func (prs *ProviderRelayService) tryAffinityProvider(
 		result.Handled = true // 客户端中断，不再继续降级
 		return result
 	}
+
+	// 缓存的 provider 失败，清除缓存（避免后续请求继续优先尝试同一失败 provider）
+	if prs.affinityManager != nil {
+		prs.affinityManager.Invalidate(affinityKey)
+	}
+	fmt.Printf("[WARN] 缓存的 provider 失败: %s | 错误: %v | 耗时: %.2fs\n",
+		cachedProvider.Name, err, result.Duration.Seconds())
 
 	if recErr := prs.blacklistService.RecordFailure(kind, cachedProvider.Name); recErr != nil {
 		fmt.Printf("[ERROR] 记录失败到黑名单失败: %v\n", recErr)
@@ -1603,6 +1607,7 @@ func (prs *ProviderRelayService) tryGeminiAffinityProvider(
 	c *gin.Context,
 	affinityKey string,
 	cachedProviderName string,
+	cachedProviderHitCount int64,
 	activeProviders []GeminiProvider,
 	endpoint string,
 	bodyBytes []byte,
@@ -1616,7 +1621,12 @@ func (prs *ProviderRelayService) tryGeminiAffinityProvider(
 		return result
 	}
 
-	fmt.Printf("[Gemini] 🎯 发现缓存的 provider: %s，优先尝试\n", cachedProviderName)
+	// 缓存命中日志只在“首次命中/Provider 变化”时输出，避免每次请求刷屏
+	// 约定：CacheAffinityManager.Set() 初始 RequestCount=1，因此首次 Get() 后 hitCount==2
+	shouldLogAffinityHit := IsLoggingEnabled() && cachedProviderHitCount == 2
+	if shouldLogAffinityHit {
+		fmt.Printf("[Gemini] 发现缓存的 provider: %s，优先尝试\n", cachedProviderName)
+	}
 
 	// 查找缓存的 provider
 	var cachedProvider *GeminiProvider
@@ -1628,7 +1638,12 @@ func (prs *ProviderRelayService) tryGeminiAffinityProvider(
 	}
 
 	if cachedProvider == nil {
-		fmt.Printf("[Gemini] 缓存的 provider %s 不在可用列表中，跳过\n", cachedProviderName)
+		if prs.affinityManager != nil {
+			prs.affinityManager.Invalidate(affinityKey)
+		}
+		if shouldLogAffinityHit {
+			fmt.Printf("[Gemini] 缓存的 provider %s 不在可用列表中，已清除缓存\n", cachedProviderName)
+		}
 		return result
 	}
 
@@ -1646,13 +1661,15 @@ func (prs *ProviderRelayService) tryGeminiAffinityProvider(
 		}
 		_ = prs.blacklistService.RecordSuccess("gemini", cachedProvider.Name)
 		prs.setLastUsedProvider("gemini", cachedProvider.Name)
-		fmt.Printf("[Gemini] ✓ 缓存命中成功 | Provider: %s | 总耗时: %.2fs\n", cachedProvider.Name, time.Since(startTime).Seconds())
+		if shouldLogAffinityHit {
+			fmt.Printf("[Gemini] 缓存命中成功 | Provider: %s | 总耗时: %.2fs\n", cachedProvider.Name, time.Since(startTime).Seconds())
+		}
 		result.Handled = true
 		return result
 	}
 
 	// 缓存的 provider 失败，清除缓存
-	fmt.Printf("[Gemini] ⚠️ 缓存的 provider 失败: %s | 错误: %s\n", cachedProvider.Name, errMsg)
+	fmt.Printf("[Gemini] 缓存的 provider 失败: %s | 错误: %s\n", cachedProvider.Name, errMsg)
 	if prs.affinityManager != nil {
 		prs.affinityManager.Invalidate(affinityKey)
 	}
@@ -1660,7 +1677,7 @@ func (prs *ProviderRelayService) tryGeminiAffinityProvider(
 	result.LastError = errMsg
 
 	if responseWritten {
-		fmt.Printf("[Gemini] ⚠️ 响应已部分写入，无法降级: %s\n", cachedProvider.Name)
+		fmt.Printf("[Gemini] 响应已部分写入，无法降级: %s\n", cachedProvider.Name)
 		result.Handled = true
 	}
 
@@ -2078,8 +2095,6 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 			endpoint = endpoint + "?" + query
 		}
 
-		fmt.Printf("[Gemini] 收到请求: %s\n", endpoint)
-
 		// 读取请求体
 		var bodyBytes []byte
 		if c.Request.Body != nil {
@@ -2114,8 +2129,7 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 				continue
 			}
 			// 检查黑名单
-			if isBlacklisted, until := prs.blacklistService.IsBlacklisted("gemini", p.Name); isBlacklisted {
-				fmt.Printf("[Gemini] ⛔ Provider %s 已拉黑，过期时间: %v\n", p.Name, until.Format("15:04:05"))
+			if isBlacklisted, _ := prs.blacklistService.IsBlacklisted("gemini", p.Name); isBlacklisted {
 				continue
 			}
 			// Level 默认值处理
@@ -2142,8 +2156,6 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 			sortedLevels = append(sortedLevels, level)
 		}
 		sort.Ints(sortedLevels)
-
-		fmt.Printf("[Gemini] 共 %d 个 Level 分组: %v\n", len(sortedLevels), sortedLevels)
 
 		// 请求日志
 		requestLog := &RequestLog{
@@ -2185,14 +2197,10 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 
 		// 【拉黑模式】：同 Provider 重试直到被拉黑，然后切换到下一个 Provider
 		if blacklistEnabled {
-			fmt.Printf("[Gemini] 🔒 拉黑模式已开启（同 Provider 重试到拉黑再切换）\n")
-
 			// 获取重试配置
 			retryConfig := prs.blacklistService.GetRetryConfig()
 			maxRetryPerProvider := retryConfig.FailureThreshold
 			retryWaitSeconds := retryConfig.RetryWaitSeconds
-			fmt.Printf("[Gemini] 重试配置: 每 Provider 最多 %d 次重试，间隔 %d 秒\n",
-				maxRetryPerProvider, retryWaitSeconds)
 
 			var lastError string
 			var lastProvider string
@@ -2201,12 +2209,10 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 			// 遍历所有 Level 和 Provider
 			for _, level := range sortedLevels {
 				providersInLevel := levelGroups[level]
-				fmt.Printf("[Gemini] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
 
 				for _, provider := range providersInLevel {
 					// 检查是否已被拉黑（跳过已拉黑的 provider）
-					if blacklisted, until := prs.blacklistService.IsBlacklisted("gemini", provider.Name); blacklisted {
-						fmt.Printf("[Gemini] ⏭️ 跳过已拉黑的 Provider: %s (解禁时间: %v)\n", provider.Name, until)
+					if blacklisted, _ := prs.blacklistService.IsBlacklisted("gemini", provider.Name); blacklisted {
 						continue
 					}
 
@@ -2220,16 +2226,15 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 
 						// 再次检查是否已被拉黑（重试过程中可能被拉黑）
 						if blacklisted, _ := prs.blacklistService.IsBlacklisted("gemini", provider.Name); blacklisted {
-							fmt.Printf("[Gemini] 🚫 Provider %s 已被拉黑，切换到下一个\n", provider.Name)
 							break
 						}
 
-						fmt.Printf("[Gemini] [拉黑模式] Provider: %s (Level %d) | 尝试 %d/%d\n",
-							provider.Name, level, retryCount+1, maxRetryPerProvider)
-
 						ok, errMsg, responseWritten := prs.forwardGeminiRequest(c, &provider, endpoint, bodyBytes, isStream, requestLog)
 						if ok {
-							fmt.Printf("[Gemini] ✓ 成功: %s | 尝试 %d 次\n", provider.Name, retryCount+1)
+							// 降噪：仅当发生重试/切换时输出成功信息
+							if IsLoggingEnabled() && (retryCount > 0 || totalAttempts > 1) {
+								fmt.Printf("[Gemini] ✓ 成功: %s | 尝试 %d 次\n", provider.Name, retryCount+1)
+							}
 							_ = prs.blacklistService.RecordSuccess("gemini", provider.Name)
 							prs.setLastUsedProvider("gemini", provider.Name)
 							return
@@ -2246,21 +2251,24 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 						lastError = errMsg
 						lastProvider = provider.Name
 
-						fmt.Printf("[Gemini] ✗ 失败: %s | 尝试 %d/%d | 错误: %s\n",
-							provider.Name, retryCount+1, maxRetryPerProvider, errMsg)
-
 						// 记录失败次数（可能触发拉黑）
 						_ = prs.blacklistService.RecordFailure("gemini", provider.Name)
 
 						// 检查是否刚被拉黑
-						if blacklisted, _ := prs.blacklistService.IsBlacklisted("gemini", provider.Name); blacklisted {
-							fmt.Printf("[Gemini] 🚫 Provider %s 达到失败阈值，已被拉黑，切换到下一个\n", provider.Name)
+						if blacklisted, until := prs.blacklistService.IsBlacklisted("gemini", provider.Name); blacklisted {
+							fmt.Printf("[Gemini] 🚫 Provider %s 达到失败阈值，已被拉黑至 %v\n",
+								provider.Name, until.Format("15:04:05"))
 							break
+						}
+
+						// 降噪：仅在“本 Provider 最后一次重试仍失败”时输出一次失败信息
+						if IsLoggingEnabled() && retryCount == maxRetryPerProvider-1 {
+							fmt.Printf("[Gemini] ✗ 失败: %s | 尝试 %d/%d | 错误: %s\n",
+								provider.Name, retryCount+1, maxRetryPerProvider, errMsg)
 						}
 
 						// 等待后重试（除非是最后一次）
 						if retryCount < maxRetryPerProvider-1 {
-							fmt.Printf("[Gemini] ⏳ 等待 %d 秒后重试...\n", retryWaitSeconds)
 							time.Sleep(time.Duration(retryWaitSeconds) * time.Second)
 						}
 					}
@@ -2285,30 +2293,28 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 
 		// 【降级模式】：按 Level 顺序尝试所有 provider
 		roundRobinEnabled := prs.isRoundRobinEnabled()
-		if roundRobinEnabled {
-			fmt.Printf("[Gemini] 🔄 降级模式 + 轮询负载均衡\n")
-		} else {
-			fmt.Printf("[Gemini] 🔄 降级模式（顺序降级）\n")
-		}
 
 		var lastError string
+		totalAttempts := 0
 
 		// 【5分钟同源缓存】检查是否有缓存的 provider
 		cachedProviderName := ""
+		var cachedProviderHitCount int64
 		if prs.affinityManager != nil {
-			cachedProviderName = prs.affinityManager.Get(affinityKey)
+			cachedProviderName, cachedProviderHitCount = prs.affinityManager.GetWithHitCount(affinityKey)
 		}
 
 		// 【5分钟同源缓存】如果有缓存的 provider，优先尝试
 		if cachedProviderName != "" {
 			affinityResult := prs.tryGeminiAffinityProvider(
-				c, affinityKey, cachedProviderName, activeProviders,
+				c, affinityKey, cachedProviderName, cachedProviderHitCount, activeProviders,
 				endpoint, bodyBytes, isStream, requestLog, start,
 			)
 			if affinityResult.Handled {
 				return // 成功或响应已写入，不再继续
 			}
 			if affinityResult.UsedProvider != "" {
+				totalAttempts++
 				lastError = affinityResult.LastError
 			}
 		}
@@ -2321,21 +2327,17 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 				providersInLevel = prs.roundRobinOrderGemini(level, providersInLevel)
 			}
 
-			fmt.Printf("[Gemini] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
-
-			for idx, provider := range providersInLevel {
+			for _, provider := range providersInLevel {
 				// 【5分钟同源缓存】跳过已经尝试过的缓存 provider
 				if provider.Name == cachedProviderName {
-					fmt.Printf("[Gemini]   跳过已尝试的缓存 provider: %s\n", provider.Name)
 					continue
 				}
-
-				fmt.Printf("[Gemini]   [%d/%d] Provider: %s\n", idx+1, len(providersInLevel), provider.Name)
 
 				// 预填日志，失败也能落库
 				requestLog.Provider = provider.Name
 				requestLog.Model = provider.Model
 
+				totalAttempts++
 				ok, errMsg, responseWritten := prs.forwardGeminiRequest(c, &provider, endpoint, bodyBytes, isStream, requestLog)
 				if ok {
 					// 【5分钟同源缓存】设置缓存亲和性
@@ -2345,7 +2347,11 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 					_ = prs.blacklistService.RecordSuccess("gemini", provider.Name)
 					// 记录最后使用的供应商
 					prs.setLastUsedProvider("gemini", provider.Name)
-					fmt.Printf("[Gemini] ✓ 请求完成 | Provider: %s | 总耗时: %.2fs\n", provider.Name, time.Since(start).Seconds())
+					// 降噪：仅当发生切换/重试时输出成功信息
+					if IsLoggingEnabled() && totalAttempts > 1 {
+						fmt.Printf("[Gemini] ✓ 请求完成 | Provider: %s | 总耗时: %.2fs | 尝试 %d 次\n",
+							provider.Name, time.Since(start).Seconds(), totalAttempts)
+					}
 					return // 成功，退出
 				}
 
@@ -2360,8 +2366,6 @@ func (prs *ProviderRelayService) geminiProxyHandler(apiVersion string) gin.Handl
 				lastError = errMsg
 				_ = prs.blacklistService.RecordFailure("gemini", provider.Name)
 			}
-
-			fmt.Printf("[Gemini] Level %d 的所有 %d 个 provider 均失败，尝试下一 Level\n", level, len(providersInLevel))
 		}
 
 		// 所有 Level 都失败
@@ -2552,13 +2556,10 @@ func (prs *ProviderRelayService) injectThinkingIfNeeded(bodyBytes []byte, apiURL
 	// 2. 检查 body 中是否已经存在 "thinking" 字段
 	// 使用 gjson.GetBytes 快速检查，性能很高
 	if gjson.GetBytes(bodyBytes, "thinking").Exists() {
-		fmt.Printf("[INFO] 检测到目标 URL，但用户已包含 thinking 参数，跳过注入: %s\n", apiURL)
 		return bodyBytes
 	}
 
 	// 3. 只有在不存在时，才注入默认参数
-	fmt.Printf("[INFO] 检测到目标 URL 且无 thinking 参数，执行注入: %s\n", apiURL)
-
 	modifiedBody, err := sjson.SetBytes(bodyBytes, "thinking", map[string]interface{}{
 		"type":          "enabled",
 		"budget_tokens": 4000,
@@ -2586,8 +2587,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 		// 构建 provider kind（格式: "custom:{toolId}"）
 		kind := "custom:" + toolId
 		endpoint := "/v1/messages"
-
-		fmt.Printf("[CustomCLI] 收到请求: toolId=%s, kind=%s\n", toolId, kind)
 
 		// 读取请求体
 		var bodyBytes []byte
@@ -2629,20 +2628,17 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 			}
 
 			if errs := provider.ValidateConfiguration(); len(errs) > 0 {
-				fmt.Printf("[CustomCLI][WARN] Provider %s config validation failed, skipped: %v\n", provider.Name, errs)
 				reasons.configInvalid++
 				continue
 			}
 
 			if requestedModel != "" && !provider.IsModelSupported(requestedModel) {
-				fmt.Printf("[CustomCLI][INFO] Provider %s does not support model %s, skipped\n", provider.Name, requestedModel)
 				reasons.modelUnsupported++
 				continue
 			}
 
 			// Blacklist check
-			if isBlacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
-				fmt.Printf("[CustomCLI] ⛔ Provider %s blacklisted until %v\n", provider.Name, until.Format("15:04:05"))
+			if isBlacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
 				reasons.blacklisted++
 				continue
 			}
@@ -2655,16 +2651,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": errMsg})
 			return
 		}
-
-		// Build provider names list
-		providerNames := make([]string, len(active))
-		for i, p := range active {
-			providerNames[i] = p.Name
-		}
-		fmt.Printf("[CustomCLI][INFO] Providers: total=%d, active=%d, skipped=%d (disabled=%d, config=%d, model=%d, blacklist=%d): %s\n",
-			len(providers), len(active), reasons.total(),
-			reasons.disabled, reasons.configInvalid, reasons.modelUnsupported, reasons.blacklisted,
-			strings.Join(providerNames, ", "))
 
 		// 按 Level 分组
 		levelGroups := make(map[int][]Provider)
@@ -2682,8 +2668,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 		}
 		sort.Ints(levels)
 
-		fmt.Printf("[CustomCLI][INFO] 共 %d 个 Level 分组：%v\n", len(levels), levels)
-
 		query := flattenQuery(c.Request.URL.Query())
 		clientHeaders := cloneHeaders(c.Request.Header)
 		// 注意：认证方式在每个 provider 转发时由 determineAuthMethod() 动态计算
@@ -2693,14 +2677,10 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 
 		// 【拉黑模式】：同 Provider 重试直到被拉黑，然后切换到下一个 Provider
 		if blacklistEnabled {
-			fmt.Printf("[CustomCLI][INFO] 🔒 拉黑模式已开启（同 Provider 重试到拉黑再切换）\n")
-
 			// 获取重试配置
 			retryConfig := prs.blacklistService.GetRetryConfig()
 			maxRetryPerProvider := retryConfig.FailureThreshold
 			retryWaitSeconds := retryConfig.RetryWaitSeconds
-			fmt.Printf("[CustomCLI][INFO] 重试配置: 每 Provider 最多 %d 次重试，间隔 %d 秒\n",
-				maxRetryPerProvider, retryWaitSeconds)
 
 			var lastError error
 			var lastProvider string
@@ -2709,12 +2689,10 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 			// 遍历所有 Level 和 Provider
 			for _, level := range levels {
 				providersInLevel := levelGroups[level]
-				fmt.Printf("[CustomCLI][INFO] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
 
 				for _, provider := range providersInLevel {
 					// 检查是否已被拉黑（跳过已拉黑的 provider）
-					if blacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-						fmt.Printf("[CustomCLI][INFO] ⏭️ 跳过已拉黑的 Provider: %s (解禁时间: %v)\n", provider.Name, until)
+					if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
 						continue
 					}
 
@@ -2722,7 +2700,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 					effectiveModel := provider.GetEffectiveModel(requestedModel)
 					currentBodyBytes := bodyBytes
 					if effectiveModel != requestedModel && requestedModel != "" {
-						fmt.Printf("[CustomCLI][INFO] Provider %s 映射模型: %s -> %s\n", provider.Name, requestedModel, effectiveModel)
 						modifiedBody, err := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 						if err != nil {
 							fmt.Printf("[CustomCLI][ERROR] 模型映射失败: %v，跳过此 Provider\n", err)
@@ -2740,12 +2717,8 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 
 						// 再次检查是否已被拉黑（重试过程中可能被拉黑）
 						if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-							fmt.Printf("[CustomCLI][INFO] 🚫 Provider %s 已被拉黑，切换到下一个\n", provider.Name)
 							break
 						}
-
-						fmt.Printf("[CustomCLI][INFO] [拉黑模式] Provider: %s (Level %d) | 尝试 %d/%d | Model: %s\n",
-							provider.Name, level, retryCount+1, maxRetryPerProvider, effectiveModel)
 
 						startTime := time.Now()
 						// 根据 Provider 配置决定认证方式（auto 时自动检测原始请求）
@@ -2754,8 +2727,11 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 						duration := time.Since(startTime)
 
 						if ok {
-							fmt.Printf("[CustomCLI][INFO] ✓ 成功: %s | 尝试 %d 次 | 耗时: %.2fs\n",
-								provider.Name, retryCount+1, duration.Seconds())
+							// 降噪：仅当发生重试/切换时输出成功信息
+							if IsLoggingEnabled() && (retryCount > 0 || totalAttempts > 1) {
+								fmt.Printf("[CustomCLI][INFO] ✓ 成功: %s | 尝试 %d 次 | 耗时: %.2fs\n",
+									provider.Name, retryCount+1, duration.Seconds())
+							}
 							if err := prs.blacklistService.RecordSuccess(kind, provider.Name); err != nil {
 								fmt.Printf("[CustomCLI][WARN] 清零失败计数失败: %v\n", err)
 							}
@@ -2771,12 +2747,9 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 						if err != nil {
 							errorMsg = err.Error()
 						}
-						fmt.Printf("[CustomCLI][WARN] ✗ 失败: %s | 尝试 %d/%d | 错误: %s | 耗时: %.2fs\n",
-							provider.Name, retryCount+1, maxRetryPerProvider, errorMsg, duration.Seconds())
 
 						// 客户端中断不计入失败次数，直接返回
 						if errors.Is(err, errClientAbort) {
-							fmt.Printf("[CustomCLI][INFO] 客户端中断，停止重试\n")
 							return
 						}
 
@@ -2786,14 +2759,20 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 						}
 
 						// 检查是否刚被拉黑
-						if blacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
-							fmt.Printf("[CustomCLI][INFO] 🚫 Provider %s 达到失败阈值，已被拉黑，切换到下一个\n", provider.Name)
+						if blacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); blacklisted {
+							fmt.Printf("[CustomCLI][WARN] 🚫 Provider %s 达到失败阈值，已被拉黑至 %v\n",
+								provider.Name, until.Format("15:04:05"))
 							break
+						}
+
+						// 降噪：仅在“本 Provider 最后一次重试仍失败”时输出一次 WARN
+						if retryCount == maxRetryPerProvider-1 {
+							fmt.Printf("[CustomCLI][WARN] ✗ 失败: %s | 尝试 %d/%d | 错误: %s | 耗时: %.2fs\n",
+								provider.Name, retryCount+1, maxRetryPerProvider, errorMsg, duration.Seconds())
 						}
 
 						// 等待后重试（除非是最后一次）
 						if retryCount < maxRetryPerProvider-1 {
-							fmt.Printf("[CustomCLI][INFO] ⏳ 等待 %d 秒后重试...\n", retryWaitSeconds)
 							time.Sleep(time.Duration(retryWaitSeconds) * time.Second)
 						}
 					}
@@ -2819,11 +2798,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 
 		// 【降级模式】：失败自动尝试下一个 provider
 		roundRobinEnabled := prs.isRoundRobinEnabled()
-		if roundRobinEnabled {
-			fmt.Printf("[CustomCLI][INFO] 🔄 降级模式 + 轮询负载均衡\n")
-		} else {
-			fmt.Printf("[CustomCLI][INFO] 🔄 降级模式（顺序降级）\n")
-		}
 
 		var lastError error
 		var lastProvider string
@@ -2832,14 +2806,15 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 
 		// 【5分钟同源缓存】检查是否有缓存的 provider
 		cachedProviderName := ""
+		var cachedProviderHitCount int64
 		if prs.affinityManager != nil {
-			cachedProviderName = prs.affinityManager.Get(affinityKey)
+			cachedProviderName, cachedProviderHitCount = prs.affinityManager.GetWithHitCount(affinityKey)
 		}
 
 		// 【5分钟同源缓存】如果有缓存的 provider，优先尝试
 		if cachedProviderName != "" {
 			affinityResult := prs.tryAffinityProvider(
-				c, kind, affinityKey, cachedProviderName, active,
+				c, kind, affinityKey, cachedProviderName, cachedProviderHitCount, active,
 				endpoint, query, clientHeaders, bodyBytes, isStream, requestedModel,
 			)
 			if affinityResult.Handled {
@@ -2861,12 +2836,9 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 				providersInLevel = prs.roundRobinOrder(kind, level, providersInLevel)
 			}
 
-			fmt.Printf("[CustomCLI][INFO] === 尝试 Level %d（%d 个 provider）===\n", level, len(providersInLevel))
-
 			for i, provider := range providersInLevel {
 				// 【5分钟同源缓存】跳过已经尝试过的缓存 provider
 				if provider.Name == cachedProviderName {
-					fmt.Printf("[CustomCLI][INFO]   跳过已尝试的缓存 provider: %s\n", provider.Name)
 					continue
 				}
 
@@ -2875,7 +2847,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 				effectiveModel := provider.GetEffectiveModel(requestedModel)
 				currentBodyBytes := bodyBytes
 				if effectiveModel != requestedModel && requestedModel != "" {
-					fmt.Printf("[CustomCLI][INFO] Provider %s 映射模型: %s -> %s\n", provider.Name, requestedModel, effectiveModel)
 					modifiedBody, err := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 					if err != nil {
 						fmt.Printf("[CustomCLI][ERROR] 替换模型名失败: %v\n", err)
@@ -2883,8 +2854,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 					}
 					currentBodyBytes = modifiedBody
 				}
-
-				fmt.Printf("[CustomCLI][INFO]   [%d/%d] Provider: %s | Model: %s\n", i+1, len(providersInLevel), provider.Name, effectiveModel)
 				// 获取有效的端点（用户配置优先）
 				effectiveEndpoint := provider.GetEffectiveEndpoint(endpoint)
 
@@ -2895,7 +2864,11 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 				duration := time.Since(startTime)
 
 				if ok {
-					fmt.Printf("[CustomCLI][INFO]   ✓ Level %d 成功: %s | 耗时: %.2fs\n", level, provider.Name, duration.Seconds())
+					// 降噪：仅当发生切换/重试时输出成功信息
+					if IsLoggingEnabled() && totalAttempts > 1 {
+						fmt.Printf("[CustomCLI][INFO] ✓ 成功: %s | Level %d | 尝试 %d 次 | 耗时: %.2fs\n",
+							provider.Name, level, totalAttempts, duration.Seconds())
+					}
 
 					// 【5分钟同源缓存】设置缓存亲和性
 					if prs.affinityManager != nil {
@@ -2921,7 +2894,6 @@ func (prs *ProviderRelayService) customCliProxyHandler() gin.HandlerFunc {
 					level, provider.Name, errorMsg, duration.Seconds())
 
 				if errors.Is(err, errClientAbort) {
-					fmt.Printf("[CustomCLI][INFO] 客户端中断，跳过失败计数: %s\n", provider.Name)
 				} else if err := prs.blacklistService.RecordFailure(kind, provider.Name); err != nil {
 					fmt.Printf("[CustomCLI][ERROR] 记录失败到黑名单失败: %v\n", err)
 				}
@@ -2977,8 +2949,6 @@ func (prs *ProviderRelayService) forwardModelsRequest(
 	kind string,
 	logPrefix string,
 ) error {
-	fmt.Printf("[%s] 收到 /v1/models 请求, kind=%s\n", logPrefix, kind)
-
 	// 加载 providers
 	providers, err := prs.providerService.LoadProviders(kind)
 	if err != nil {
@@ -2994,8 +2964,7 @@ func (prs *ProviderRelayService) forwardModelsRequest(
 		}
 
 		// 黑名单检查：跳过已拉黑的 provider
-		if isBlacklisted, until := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
-			fmt.Printf("[%s] ⛔ Provider %s 已拉黑，过期时间: %v\n", logPrefix, provider.Name, until.Format("15:04:05"))
+		if isBlacklisted, _ := prs.blacklistService.IsBlacklisted(kind, provider.Name); isBlacklisted {
 			continue
 		}
 
@@ -3037,8 +3006,6 @@ func (prs *ProviderRelayService) forwardModelsRequest(
 		c.JSON(http.StatusNotFound, gin.H{"error": "no providers available"})
 		return fmt.Errorf("no providers available after filtering")
 	}
-
-	fmt.Printf("[%s] 使用 Provider: %s | URL: %s\n", logPrefix, selectedProvider.Name, selectedProvider.APIURL)
 
 	// 构建目标 URL（拼接 provider 的 APIURL 和 /v1/models）
 	targetURL := joinURL(selectedProvider.APIURL, "/v1/models")
@@ -3107,8 +3074,6 @@ func (prs *ProviderRelayService) forwardModelsRequest(
 			c.Header(key, value)
 		}
 	}
-
-	fmt.Printf("[%s] ✓ 成功: %s | HTTP %d\n", logPrefix, selectedProvider.Name, resp.StatusCode)
 
 	// 返回响应
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)

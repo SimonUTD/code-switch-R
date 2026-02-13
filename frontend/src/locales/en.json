@@ -565,13 +565,22 @@
       "subtitle": "View application runtime logs (stdout/stderr) for troubleshooting.",
       "filename": "application.log",
       "empty": "No logs yet",
+      "noMatch": "No matching logs",
       "clearConfirm": "Are you sure you want to clear all logs?",
       "openFolderFailed": "Failed to open log folder",
+      "loggingDisabled": "Logging is disabled. Enable the global logging switch to view logs here.",
+      "loggingDisabledAction": "Open Settings",
+      "searchPlaceholder": "Search logs",
       "actions": {
         "copy": "Copy",
         "clear": "Clear logs",
         "openFolder": "Open folder",
-        "autoScroll": "Auto scroll"
+        "autoScroll": "Auto scroll",
+        "pause": "Pause",
+        "resume": "Resume",
+        "refresh": "Refresh",
+        "interval": "Interval",
+        "maxLines": "Lines"
       }
     },
     "terminalLogs": {

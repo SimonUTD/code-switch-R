@@ -38,35 +38,112 @@
         </div>
       </div>
 
+      <div class="terminal-toolbar">
+        <div class="terminal-toolbar-left">
+          <BaseInput
+            v-model="searchQuery"
+            class="terminal-toolbar-search"
+            :placeholder="t('components.console.searchPlaceholder')"
+          />
+          <div class="terminal-toolbar-levels">
+            <Button
+              size="sm"
+              type="button"
+              :variant="levelFilter.INFO ? 'secondary' : 'outline'"
+              @click="toggleLevel('INFO')"
+            >
+              INFO
+            </Button>
+            <Button
+              size="sm"
+              type="button"
+              :variant="levelFilter.WARN ? 'secondary' : 'outline'"
+              @click="toggleLevel('WARN')"
+            >
+              WARN
+            </Button>
+            <Button
+              size="sm"
+              type="button"
+              :variant="levelFilter.ERROR ? 'secondary' : 'outline'"
+              @click="toggleLevel('ERROR')"
+            >
+              ERROR
+            </Button>
+          </div>
+        </div>
+
+        <div class="terminal-toolbar-right">
+          <Button variant="outline" size="sm" type="button" @click="togglePaused">
+            {{ paused ? t('components.console.actions.resume') : t('components.console.actions.pause') }}
+          </Button>
+          <Button variant="outline" size="sm" type="button" @click="refreshNow" :disabled="!loggingEnabled">
+            {{ t('components.console.actions.refresh') }}
+          </Button>
+
+          <label class="terminal-toolbar-label">
+            {{ t('components.console.actions.interval') }}
+            <select v-model.number="refreshIntervalMs" class="base-input terminal-toolbar-select" :disabled="paused">
+              <option :value="1000">1s</option>
+              <option :value="2000">2s</option>
+              <option :value="5000">5s</option>
+            </select>
+          </label>
+
+          <label class="terminal-toolbar-label">
+            {{ t('components.console.actions.maxLines') }}
+            <select v-model.number="maxLines" class="base-input terminal-toolbar-select" :disabled="!loggingEnabled">
+              <option :value="200">200</option>
+              <option :value="500">500</option>
+              <option :value="1000">1000</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       <ScrollArea ref="scrollAreaRef" height="calc(100vh - 240px)">
         <div class="terminal-content">
-          <div v-if="logs.length === 0" class="terminal-empty">
+          <div v-if="!loggingEnabled" class="terminal-empty">
+            <p>{{ t('components.console.loggingDisabled') }}</p>
+            <Button variant="link" type="button" @click="goToSettings">
+              {{ t('components.console.loggingDisabledAction') }}
+            </Button>
+          </div>
+
+          <div v-else-if="logs.length === 0" class="terminal-empty">
             <p>{{ t('components.console.empty') }}</p>
           </div>
 
-          <div v-for="(log, index) in logs" :key="index" class="log-line">
+          <div v-else-if="visibleLogs.length === 0" class="terminal-empty">
+            <p>{{ t('components.console.noMatch') }}</p>
+          </div>
+
+          <div v-for="(log, index) in visibleLogs" :key="index" class="log-line">
             <span class="log-timestamp">{{ formatTime(log.timestamp) }}</span>
             <span class="log-level" :class="getLevelClass(log.level)">{{ log.level }}</span>
             <span class="log-message">{{ log.message }}</span>
           </div>
         </div>
       </ScrollArea>
-      </div>
+    </div>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { Call } from '@wailsio/runtime'
 import PageLayout from '../common/PageLayout.vue'
+import BaseInput from '../common/BaseInput.vue'
 import Button from '../ui/Button.vue'
 import ScrollArea from '../ui/ScrollArea.vue'
 import { showToast } from '../../utils/toast'
-import { GetLogs, ClearLogs } from '../../../bindings/codeswitch/services/consoleservice'
+import { ClearLogs, GetRecentLogs } from '../../../bindings/codeswitch/services/consoleservice'
 import type { ConsoleLog } from '../../../bindings/codeswitch/services/models'
 
 const { t } = useI18n()
+const router = useRouter()
 
 type LogLevel = 'INFO' | 'WARN' | 'ERROR'
 interface TerminalLogLine {
@@ -77,19 +154,46 @@ interface TerminalLogLine {
 
 const AUTO_SCROLL_STORAGE_KEY = 'logs-auto-scroll'
 const AUTO_SCROLL_EVENT = 'logs-auto-scroll-change'
+const APP_SETTINGS_UPDATED_EVENT = 'app-settings-updated'
+const LOGGING_ENABLED_STORAGE_KEY = 'app-settings-enableLogging'
+const REFRESH_INTERVAL_STORAGE_KEY = 'console-refresh-interval-ms'
+const MAX_LINES_STORAGE_KEY = 'console-max-lines'
+const LEVEL_FILTER_STORAGE_KEY = 'console-level-filter'
 
 const logs = ref<TerminalLogLine[]>([])
 const autoScroll = ref(true)
 const scrollAreaRef = ref<InstanceType<typeof ScrollArea> | null>(null)
 let refreshInterval: number | null = null
 
+const loggingEnabled = ref(localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true')
+const paused = ref(false)
+const searchQuery = ref('')
+const refreshIntervalMs = ref(readNumberFromStorage(REFRESH_INTERVAL_STORAGE_KEY, 2000))
+const maxLines = ref(readNumberFromStorage(MAX_LINES_STORAGE_KEY, 500))
+const levelFilter = ref<Record<LogLevel, boolean>>(readLevelFilterFromStorage())
+
+const visibleLogs = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return logs.value.filter((log) => {
+    if (!levelFilter.value[log.level]) return false
+    if (!query) return true
+    return log.message.toLowerCase().includes(query)
+  })
+})
+
 const onAutoScrollChanged = (event: Event) => {
   autoScroll.value = Boolean((event as CustomEvent<boolean>).detail)
 }
 
-const loadLogs = async () => {
+const loadLogs = async (force = false) => {
+  if (!loggingEnabled.value) {
+    logs.value = []
+    return
+  }
+  if (!force && paused.value) return
+
   try {
-    const newLogs = await GetLogs()
+    const newLogs = await GetRecentLogs(maxLines.value)
     logs.value = newLogs.map(toTerminalLine).filter(Boolean) as TerminalLogLine[]
 
     if (autoScroll.value) {
@@ -112,7 +216,7 @@ const handleClear = async () => {
 }
 
 const handleCopy = async () => {
-  const text = logs.value.map((l) => `[${formatTime(l.timestamp)}] [${l.level}] ${l.message}`).join('\n')
+  const text = visibleLogs.value.map((l) => `[${formatTime(l.timestamp)}] [${l.level}] ${l.message}`).join('\n')
   try {
     await navigator.clipboard.writeText(text)
     showToast(t('components.logs.detail.copied', 'Copied'), 'success')
@@ -136,6 +240,55 @@ const toggleAutoScroll = () => {
   autoScroll.value = nextValue
   localStorage.setItem(AUTO_SCROLL_STORAGE_KEY, String(nextValue))
   window.dispatchEvent(new CustomEvent(AUTO_SCROLL_EVENT, { detail: nextValue }))
+}
+
+const togglePaused = () => {
+  paused.value = !paused.value
+}
+
+const refreshNow = () => loadLogs(true)
+
+const toggleLevel = (level: LogLevel) => {
+  levelFilter.value[level] = !levelFilter.value[level]
+}
+
+const goToSettings = () => {
+  router.push('/settings')
+}
+
+const syncLoggingEnabledFromStorage = () => {
+  const enabled = localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true'
+  if (enabled === loggingEnabled.value) return
+
+  loggingEnabled.value = enabled
+  if (!enabled) {
+    stopPolling()
+    logs.value = []
+    return
+  }
+  startPolling()
+  refreshNow()
+}
+
+const startPolling = () => {
+  if (refreshInterval !== null) return
+  if (!loggingEnabled.value || paused.value || document.hidden) return
+  refreshInterval = window.setInterval(() => loadLogs(), refreshIntervalMs.value)
+}
+
+const stopPolling = () => {
+  if (refreshInterval === null) return
+  clearInterval(refreshInterval)
+  refreshInterval = null
+}
+
+const onVisibilityChange = () => {
+  if (document.hidden) {
+    stopPolling()
+    return
+  }
+  startPolling()
+  refreshNow()
 }
 
 const formatTime = (timestamp: any) => {
@@ -183,22 +336,163 @@ onMounted(() => {
     autoScroll.value = false
   }
   window.addEventListener(AUTO_SCROLL_EVENT, onAutoScrollChanged)
+  window.addEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 
-  loadLogs()
-  refreshInterval = window.setInterval(() => {
-    loadLogs()
-  }, 1000)
+  refreshNow()
+  startPolling()
 })
 
 onUnmounted(() => {
-  if (refreshInterval !== null) {
-    clearInterval(refreshInterval)
-  }
+  stopPolling()
   window.removeEventListener(AUTO_SCROLL_EVENT, onAutoScrollChanged)
+  window.removeEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
+
+watch(refreshIntervalMs, (value) => {
+  localStorage.setItem(REFRESH_INTERVAL_STORAGE_KEY, String(value))
+  stopPolling()
+  startPolling()
+})
+
+watch(maxLines, (value) => {
+  localStorage.setItem(MAX_LINES_STORAGE_KEY, String(value))
+  refreshNow()
+})
+
+watch(
+  levelFilter,
+  (value) => {
+    localStorage.setItem(LEVEL_FILTER_STORAGE_KEY, JSON.stringify(value))
+  },
+  { deep: true },
+)
+
+watch(paused, (value) => {
+  if (value) {
+    stopPolling()
+    return
+  }
+  startPolling()
+  refreshNow()
+})
+
+function readNumberFromStorage(key: string, defaultValue: number) {
+  const raw = localStorage.getItem(key)
+  if (raw === null || raw.trim() === '') return defaultValue
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : defaultValue
+}
+
+function readLevelFilterFromStorage(): Record<LogLevel, boolean> {
+  const fallback: Record<LogLevel, boolean> = { INFO: true, WARN: true, ERROR: true }
+  try {
+    const raw = localStorage.getItem(LEVEL_FILTER_STORAGE_KEY)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw) as Partial<Record<LogLevel, boolean>>
+    return {
+      INFO: parsed.INFO !== false,
+      WARN: parsed.WARN !== false,
+      ERROR: parsed.ERROR !== false,
+    }
+  } catch {
+    return fallback
+  }
+}
 </script>
 
 <style scoped>
+.terminal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #27272a;
+  background: #0f0f12;
+}
+
+.terminal-toolbar-left {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 240px;
+}
+
+.terminal-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.terminal-toolbar-search {
+  max-width: 420px;
+  min-width: 220px;
+}
+
+.terminal-toolbar-levels {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.terminal-toolbar-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+}
+
+.terminal-toolbar-select {
+  width: auto;
+  min-width: 92px;
+  height: 32px;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  border-radius: 0.5rem;
+  border: 1px solid #27272a;
+  background: #09090b;
+  color: #e4e4e7;
+}
+
+.terminal-container :deep(.base-input) {
+  border-color: #27272a;
+  background: #09090b;
+  color: #e4e4e7;
+}
+
+.terminal-container :deep(.base-input::placeholder) {
+  color: #71717a;
+}
+
+.terminal-container :deep(.btn-outline) {
+  border-color: #27272a;
+  background: transparent;
+  color: #e4e4e7;
+}
+
+.terminal-container :deep(.btn-outline:hover),
+.terminal-container :deep(.btn-outline:focus-visible) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+}
+
+.terminal-container :deep(.btn-secondary) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e4e4e7;
+}
+
+.terminal-container :deep(.btn-secondary:hover),
+.terminal-container :deep(.btn-secondary:focus-visible) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .terminal-container {
   background: #09090b;
   border-radius: 0.75rem;

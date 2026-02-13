@@ -21,13 +21,13 @@ type CacheAffinity struct {
 // CacheAffinityManager 缓存亲和性管理器
 // 线程安全的内存缓存，支持 TTL 过期和后台清理
 type CacheAffinityManager struct {
-	store       map[string]*CacheAffinity
-	mu          sync.RWMutex
-	defaultTTL  time.Duration
-	stopCh      chan struct{}
-	startOnce   sync.Once // 防止多次启动清理任务
-	stopOnce    sync.Once // 防止多次关闭 channel 导致 panic
-	debugLog    bool      // 是否启用调试日志
+	store      map[string]*CacheAffinity
+	mu         sync.RWMutex
+	defaultTTL time.Duration
+	stopCh     chan struct{}
+	startOnce  sync.Once // 防止多次启动清理任务
+	stopOnce   sync.Once // 防止多次关闭 channel 导致 panic
+	debugLog   bool      // 是否启用调试日志
 }
 
 // NewCacheAffinityManager 创建缓存亲和性管理器
@@ -79,12 +79,20 @@ func HashAPIKey(apiKey string) string {
 // 如果缓存存在且未过期，返回 provider 名称；否则返回空字符串
 // 使用 atomic 操作更新命中次数，避免写锁竞争
 func (cam *CacheAffinityManager) Get(key string) string {
+	providerName, _ := cam.GetWithHitCount(key)
+	return providerName
+}
+
+// GetWithHitCount 获取缓存的 provider 名称，并返回命中次数（原子递增后）
+// 如果缓存不存在或已过期，返回 ("", 0)
+// 命中次数用于上层做“首次命中/变化时才输出日志”等降噪策略
+func (cam *CacheAffinityManager) GetWithHitCount(key string) (providerName string, hitCount int64) {
 	// 快速路径：读锁检查
 	cam.mu.RLock()
 	affinity, exists := cam.store[key]
 	if !exists {
 		cam.mu.RUnlock()
-		return ""
+		return "", 0
 	}
 
 	now := time.Now()
@@ -98,18 +106,18 @@ func (cam *CacheAffinityManager) Get(key string) string {
 			cam.logDebug("[CacheAffinity] 缓存已过期: %s\n", key)
 		}
 		cam.mu.Unlock()
-		return ""
+		return "", 0
 	}
 
 	// 有效缓存 - 使用 atomic 更新命中次数，避免获取写锁
-	providerName := affinity.ProviderName
-	count := atomic.AddInt64(&affinity.RequestCount, 1)
+	providerName = affinity.ProviderName
+	hitCount = atomic.AddInt64(&affinity.RequestCount, 1)
 	cam.mu.RUnlock()
 
 	cam.logDebug("[CacheAffinity] 缓存命中: %s → %s (count: %d)\n",
-		key, providerName, count)
+		key, providerName, hitCount)
 
-	return providerName
+	return providerName, hitCount
 }
 
 // Set 设置缓存亲和性
@@ -117,6 +125,17 @@ func (cam *CacheAffinityManager) Get(key string) string {
 func (cam *CacheAffinityManager) Set(key, providerName string) {
 	cam.mu.Lock()
 	defer cam.mu.Unlock()
+
+	// 如果 provider 未变化，只刷新 TTL，避免每次成功都重置 RequestCount。
+	// 否则上层基于 hitCount 的“首次命中/变化时才输出日志”会被反复触发，导致日志刷屏。
+	if existing, ok := cam.store[key]; ok && existing != nil {
+		if existing.ProviderName == providerName {
+			existing.ExpireAt = time.Now().Add(cam.defaultTTL)
+			cam.logDebug("[CacheAffinity] 缓存刷新: %s → %s (TTL: %v, count: %d)\n",
+				key, providerName, cam.defaultTTL, existing.RequestCount)
+			return
+		}
+	}
 
 	cam.store[key] = &CacheAffinity{
 		ProviderName: providerName,

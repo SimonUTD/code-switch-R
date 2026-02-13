@@ -566,13 +566,22 @@
       "subtitle": "查看应用运行日志（stdout/stderr），用于排查问题。",
       "filename": "application.log",
       "empty": "暂无日志",
+      "noMatch": "没有匹配的日志",
       "clearConfirm": "确定要清空所有日志吗？",
       "openFolderFailed": "打开日志目录失败",
+      "loggingDisabled": "日志记录已关闭。开启“全局日志开关”后，应用才会记录并在此展示日志。",
+      "loggingDisabledAction": "去设置开启",
+      "searchPlaceholder": "搜索日志内容",
       "actions": {
         "copy": "复制",
         "clear": "清空日志",
         "openFolder": "打开目录",
-        "autoScroll": "自动滚动"
+        "autoScroll": "自动滚动",
+        "pause": "暂停",
+        "resume": "继续",
+        "refresh": "刷新",
+        "interval": "刷新频率",
+        "maxLines": "显示条数"
       }
     },
     "terminalLogs": {
