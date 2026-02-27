@@ -311,10 +311,10 @@
           <span class="version-text">{{ appVersion }}</span>
         </ListItem>
 
-        <ListItem v-if="updateState?.latest_known_version && updateState.latest_known_version !== appVersion"
+        <ListItem v-if="hasNewVersion"
           :label="$t('components.general.label.latestVersion')">
           <span class="version-text highlight">
-            {{ updateState.latest_known_version }}
+            {{ latestKnownVersion }}
           </span>
           <Badge variant="info" size="sm">NEW</Badge>
         </ListItem>
@@ -336,7 +336,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, onUnmounted } from 'vue'
+  import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Call } from '@wailsio/runtime'
 import PageLayout from '../common/PageLayout.vue'
@@ -354,6 +354,7 @@ import { getDefaultExportPath, exportConfig as exportAppConfig, importConfig as 
 import { useI18n } from 'vue-i18n'
 import { extractErrorMessage } from '../../utils/error'
 import { showToast } from '../../utils/toast'
+import { compareVersions } from '../../utils/versionCompare'
 
 const { t } = useI18n()
 
@@ -386,6 +387,13 @@ const updateState = ref<UpdateState | null>(null)
 const checking = ref(false)
 const downloading = ref(false)
 const appVersion = ref('')
+
+const latestKnownVersion = computed(() => updateState.value?.latest_known_version?.trim() ?? '')
+const hasNewVersion = computed(() => {
+  if (!latestKnownVersion.value) return false
+  if (!appVersion.value) return false
+  return compareVersions(appVersion.value, latestKnownVersion.value) < 0
+})
 
 // 拉黑配置相关状态
 const blacklistEnabled = ref(true)  // 拉黑功能总开关

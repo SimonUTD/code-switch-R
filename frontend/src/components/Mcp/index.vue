@@ -336,7 +336,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '../common/BaseButton.vue'
 import PageLayout from '../common/PageLayout.vue'
@@ -1110,6 +1110,10 @@ const collectPlaceholders = (value: string, set: Set<string>) => {
 }
 
 onMounted(() => {
+  void loadServers()
+})
+
+onActivated(() => {
   void loadServers()
 })
 </script>

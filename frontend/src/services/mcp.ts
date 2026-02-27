@@ -23,7 +23,7 @@ export type McpServer = {
 }
 
 export const fetchMcpServers = async (): Promise<McpServer[]> => {
-  const response = await Call.ByName('codeswitch/services.MCPService.ListServers')
+  const response = await Call.ByName('codeswitch/services.MCPService.SyncFromPlatformFiles')
   return (response as McpServer[]) ?? []
 }
 

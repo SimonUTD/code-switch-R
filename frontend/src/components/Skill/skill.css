@@ -1,0 +1,121 @@
+/* Skill Groups */
+.skill-group {
+  margin-bottom: 0;
+}
+
+.skill-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.skill-group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--mac-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-group-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background: var(--mac-accent);
+  border-radius: 2px;
+}
+
+.skill-empty-installed {
+  text-align: center;
+  color: var(--mac-text-secondary);
+  padding: 24px;
+  margin-bottom: 0;
+}
+
+/* Skill List */
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.installed-skills {
+  gap: 16px;
+}
+
+/* Available Skill Card */
+.skill-card.available-card {
+  background: color-mix(in srgb, var(--mac-surface) 90%, transparent);
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.skill-card-eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--mac-text-secondary);
+  margin-bottom: 4px;
+}
+
+.skill-card h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.skill-card-desc {
+  color: var(--mac-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.skill-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Common */
+.skill-list-section {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-section);
+}
+
+.skill-empty {
+  margin-top: 0;
+  color: var(--mac-text-secondary);
+  text-align: center;
+}
+
+.skill-error {
+  color: #f87171;
+  margin-top: 0;
+}
+
+.skill-divider {
+  height: 1px;
+  width: 100%;
+  background: color-mix(in srgb, var(--mac-border) 70%, transparent);
+  margin: 8px 0;
+}
+
+html.dark .skill-card.available-card {
+  background: color-mix(in srgb, var(--mac-surface) 70%, transparent);
+}

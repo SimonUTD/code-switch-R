@@ -1022,6 +1022,10 @@
         "claude": "Claude Code",
         "codex": "Codex"
       },
+      "views": {
+        "installed": "已安装",
+        "available": "可安装"
+      },
       "groups": {
         "project": "项目级技能",
         "user": "用户级技能",
