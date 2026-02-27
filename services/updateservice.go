@@ -1873,7 +1873,33 @@ func (us *UpdateService) LoadState() error {
 	us.mu.Lock()
 	us.lastCheckTime = state.LastCheckTime
 	us.checkFailures = state.ConsecutiveFailures
-	us.latestVersion = state.LatestKnownVersion
+	loadedLatest := strings.TrimSpace(state.LatestKnownVersion)
+	us.latestVersion = loadedLatest
+	// 修复：update-state.json 可能来自旧版本，导致 LatestKnownVersion 低于当前安装版本（例如显示 v1.3.4）。
+	// 这会造成“设置页最新版本显示异常且重启后回退”的体验问题。
+	currentVersion := strings.TrimSpace(us.currentVersion)
+	if loadedLatest != "" && currentVersion != "" {
+		currentVer, errCurrent := version.NewVersion(currentVersion)
+		loadedVer, errLoaded := version.NewVersion(loadedLatest)
+		switch {
+		case errCurrent != nil || errLoaded != nil:
+			log.Printf(
+				"[UpdateService] ⚠️ 版本号解析失败，跳过 latestKnownVersion 修正: current=%q err=%v latest=%q err=%v",
+				currentVersion,
+				errCurrent,
+				loadedLatest,
+				errLoaded,
+			)
+		case loadedVer.LessThan(currentVer):
+			log.Printf(
+				"[UpdateService] 修正 latestKnownVersion: %s -> %s（state 低于当前安装版本）",
+				loadedLatest,
+				currentVersion,
+			)
+			us.latestVersion = currentVersion
+			needSave = true
+		}
+	}
 	us.downloadProgress = state.DownloadProgress
 
 	// 验证 updateReady 状态：pending 文件才是权威来源
