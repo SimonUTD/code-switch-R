@@ -166,12 +166,19 @@ func (us *UpdateService) CheckUpdate() (*UpdateInfo, error) {
 	// 1. 优先尝试静态文件方式（无限流）
 	info, err := us.checkUpdateViaStaticFile()
 	if err == nil {
+		us.markCheckSuccess()
 		return info, nil
 	}
 	log.Printf("[UpdateService] 静态文件检查失败: %v，尝试 API fallback", err)
 
 	// 2. Fallback 到 GitHub API（保留兼容性）
-	return us.checkUpdateViaAPI()
+	info, err = us.checkUpdateViaAPI()
+	if err != nil {
+		us.markCheckFailure()
+		return nil, err
+	}
+	us.markCheckSuccess()
+	return info, nil
 }
 
 // checkUpdateViaStaticFile 通过静态文件检查更新（无限流）
@@ -1740,24 +1747,34 @@ func (us *UpdateService) CheckUpdateAsync() {
 		updateInfo, err := us.CheckUpdate()
 		if err != nil {
 			log.Printf("[UpdateService] 检查更新失败: %v", err)
-			us.mu.Lock()
-			us.checkFailures++
-			us.mu.Unlock()
-			us.SaveState()
 			return
 		}
-
-		us.mu.Lock()
-		us.lastCheckTime = time.Now()
-		us.checkFailures = 0
-		us.mu.Unlock()
-		us.SaveState()
 
 		if updateInfo.Available {
 			log.Printf("[UpdateService] 发现新版本 %s", updateInfo.Version)
 			go us.autoDownload()
 		}
 	}()
+}
+
+func (us *UpdateService) markCheckSuccess() {
+	us.mu.Lock()
+	us.lastCheckTime = time.Now()
+	us.checkFailures = 0
+	us.mu.Unlock()
+	if err := us.SaveState(); err != nil {
+		log.Printf("[UpdateService] 保存状态失败: %v", err)
+	}
+}
+
+func (us *UpdateService) markCheckFailure() {
+	us.mu.Lock()
+	us.lastCheckTime = time.Now()
+	us.checkFailures++
+	us.mu.Unlock()
+	if err := us.SaveState(); err != nil {
+		log.Printf("[UpdateService] 保存状态失败: %v", err)
+	}
 }
 
 // GetUpdateState 获取更新状态
@@ -1828,7 +1845,9 @@ func (us *UpdateService) LoadState() error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// 文件不存在，保存默认配置
-			_ = us.SaveState()
+			if err := us.SaveState(); err != nil {
+				log.Printf("[UpdateService] 保存默认状态失败: %v", err)
+			}
 			return nil
 		}
 		return fmt.Errorf("读取状态文件失败: %w", err)

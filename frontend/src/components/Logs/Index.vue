@@ -4,36 +4,49 @@
     :sticky="true"
   >
     <template #actions>
-      <button
-        type="button"
-        class="ghost-icon"
-        :class="{ rotating: loading }"
-        :data-tooltip="t('components.logs.refresh')"
-        :aria-label="t('components.logs.refresh')"
-        :disabled="loading"
-        @click="manualRefresh"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M20.5 8a8.5 8.5 0 10-2.38 7.41"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M20.5 4v4h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </button>
+      <div class="logs-header-actions">
+        <span class="logs-refresh-label">
+          {{ t('components.logs.nextRefresh', { seconds: countdown }) }}
+        </span>
+        <button
+          type="button"
+          class="ghost-icon"
+          :class="{ rotating: loading }"
+          :data-tooltip="t('components.logs.refresh')"
+          :aria-label="t('components.logs.refresh')"
+          :disabled="loading || !loggingEnabled"
+          @click="manualRefresh"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M20.5 8a8.5 8.5 0 10-2.38 7.41"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M20.5 4v4h-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
     </template>
 
+    <div v-if="!loggingEnabled" class="logging-disabled">
+      <p>{{ t('components.console.loggingDisabled') }}</p>
+      <BaseButton variant="outline" size="sm" type="button" @click="goToSettings">
+        {{ t('components.console.loggingDisabledAction') }}
+      </BaseButton>
+    </div>
+
+    <template v-else>
     <form class="logs-filter-row" @submit.prevent="applyFilters">
       <div class="filter-fields">
         <label class="filter-field">
@@ -160,11 +173,13 @@
       :sequenceId="detailDrawer.sequenceId"
       @close="closeDetailDrawer"
     />
+    </template>
   </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted, watch, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseButton from '../common/BaseButton.vue'
 import PageLayout from '../common/PageLayout.vue'
@@ -182,6 +197,15 @@ import {
 } from '../../services/requestDetail'
 
 const { t } = useI18n()
+const router = useRouter()
+
+const APP_SETTINGS_UPDATED_EVENT = 'app-settings-updated'
+const LOGGING_ENABLED_STORAGE_KEY = 'app-settings-enableLogging'
+const loggingEnabled = ref(localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true')
+
+const goToSettings = () => {
+  router.push('/settings')
+}
 
 const logs = ref<RequestLog[]>([])
 const loading = ref(false)
@@ -284,6 +308,10 @@ const stopCountdown = () => {
 }
 
 const loadLogs = async () => {
+  if (!loggingEnabled.value) {
+    logs.value = []
+    return
+  }
   loading.value = true
   try {
     const data = await fetchRequestLogs({
@@ -377,6 +405,7 @@ const formatNumber = (value?: number) => {
 }
 
 const loadProviderOptions = async () => {
+  if (!loggingEnabled.value) return
   try {
     const list = await fetchLogProviders(filters.platform)
     providerOptions.value = list ?? []
@@ -391,21 +420,58 @@ const loadProviderOptions = async () => {
 watch(
   () => filters.platform,
   async () => {
+    if (!loggingEnabled.value) return
     await loadProviderOptions()
   },
 )
 
-onMounted(async () => {
-  await Promise.all([loadDashboard(), loadProviderOptions(), loadRecordMode()])
+const syncLoggingEnabledFromStorage = () => {
+  const enabled = localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true'
+  if (enabled === loggingEnabled.value) return
+
+  loggingEnabled.value = enabled
+  if (!enabled) {
+    stopCountdown()
+    logs.value = []
+    return
+  }
+  void Promise.all([loadDashboard(), loadProviderOptions()])
   startCountdown()
+}
+
+onMounted(async () => {
+  window.addEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
+  await loadRecordMode()
+
+  if (loggingEnabled.value) {
+    await Promise.all([loadDashboard(), loadProviderOptions()])
+    startCountdown()
+  }
 })
 
 onUnmounted(() => {
   stopCountdown()
+  window.removeEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
 })
 </script>
 
 <style scoped>
+.logging-disabled {
+  border: 1px dashed var(--mac-border);
+  border-radius: 16px;
+  padding: 24px;
+  color: var(--mac-text-secondary);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.logging-disabled p {
+  margin: 0;
+}
+
 .logs-header-actions {
   display: inline-flex;
   align-items: center;

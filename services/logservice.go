@@ -46,6 +46,9 @@ func (ls *LogService) ListRequestLogs(platform string, provider string, limit in
 	}
 	records, err := model.Selects(options...)
 	if err != nil {
+		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
+			return []RequestLog{}, nil
+		}
 		return nil, err
 	}
 
@@ -168,6 +171,9 @@ func (ls *LogService) ListProviders(platform string) ([]string, error) {
 	}
 	records, err := model.Selects(options...)
 	if err != nil {
+		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
+			return []string{}, nil
+		}
 		return nil, err
 	}
 	providers := make([]string, 0, len(records))

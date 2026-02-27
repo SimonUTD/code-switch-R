@@ -1,0 +1,277 @@
+.availability-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  background: var(--mac-surface);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--mac-text);
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--mac-text-secondary);
+}
+
+.stat-ok .stat-value {
+  color: #10b981;
+}
+
+.stat-warn .stat-value {
+  color: #f59e0b;
+}
+
+.stat-bad .stat-value {
+  color: #ef4444;
+}
+
+.stat-off .stat-value {
+  color: var(--mac-text-secondary);
+}
+
+.availability-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--mac-text-secondary);
+}
+
+.availability-loading {
+  display: flex;
+  justify-content: center;
+  padding: 28px 0;
+}
+
+.availability-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 3px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
+  border-top-color: var(--mac-accent);
+  animation: spin 1s linear infinite;
+}
+
+.availability-platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.platform-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mac-text);
+  text-transform: capitalize;
+}
+
+.provider-name {
+  font-weight: 600;
+  color: var(--mac-text);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-status {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.provider-status.status-ok {
+  color: #10b981;
+}
+
+.provider-status.status-warn {
+  color: #f59e0b;
+}
+
+.provider-status.status-bad {
+  color: #ef4444;
+}
+
+.provider-status.status-muted {
+  color: var(--mac-text-secondary);
+}
+
+.provider-status--disabled {
+  color: var(--mac-text-secondary);
+  font-weight: 500;
+}
+
+.provider-meta-item {
+  font-size: 0.85rem;
+  color: var(--mac-text-secondary);
+}
+
+.availability-table-wrapper {
+  border: 1px solid var(--mac-border);
+  border-radius: 16px;
+  overflow-x: auto;
+  background: var(--mac-surface);
+}
+
+.availability-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1220px;
+}
+
+.availability-table th,
+.availability-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mac-border) 70%, transparent);
+  vertical-align: top;
+}
+
+.availability-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mac-text-secondary);
+  text-align: left;
+  background: color-mix(in srgb, var(--mac-surface) 75%, transparent);
+}
+
+.availability-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--mac-surface) 70%, rgba(255, 255, 255, 0.04));
+}
+
+.col-provider {
+  width: 320px;
+}
+
+.col-config {
+  width: 360px;
+}
+
+.col-timeline {
+  width: 320px;
+}
+
+.col-actions {
+  width: 220px;
+  text-align: right;
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cell-timeline {
+  white-space: nowrap;
+}
+
+.provider-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.provider-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.provider-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.config-lines {
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+
+.config-line {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.config-label {
+  color: var(--mac-text-secondary);
+  white-space: nowrap;
+}
+
+.config-value {
+  color: var(--mac-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.timeline-inline {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-items: center;
+}
+
+.placeholder-muted {
+  color: var(--mac-text-secondary);
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--mac-border) 60%, transparent);
+  flex: 0 0 auto;
+}
+
+.timeline-dot.dot-ok {
+  background: #10b981;
+}
+
+.timeline-dot.dot-warn {
+  background: #f59e0b;
+}
+
+.timeline-dot.dot-bad {
+  background: #ef4444;
+}
+
+.availability-empty {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--mac-text-secondary);
+}

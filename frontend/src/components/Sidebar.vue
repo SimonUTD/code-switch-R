@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Browser } from '@wailsio/runtime'
 import { fetchCurrentVersion } from '../services/version'
 import { getUpdateState, type UpdateState } from '../services/update'
+import { compareVersions } from '../utils/versionCompare'
  
 
 const router = useRouter()
@@ -16,21 +17,6 @@ const appVersion = ref('...')
 const updateState = ref<UpdateState | null>(null)
 let updateTimer: number | undefined
 const releasePageUrl = 'https://github.com/SimonUTD/code-switch-R/releases'
-
-const normalizeVersion = (value: string) => value.replace(/^v/i, '').trim()
-
-const compareVersions = (current: string, remote: string) => {
-  const curParts = normalizeVersion(current).split('.').map((part) => parseInt(part, 10) || 0)
-  const remoteParts = normalizeVersion(remote).split('.').map((part) => parseInt(part, 10) || 0)
-  const maxLen = Math.max(curParts.length, remoteParts.length)
-  for (let i = 0; i < maxLen; i++) {
-    const cur = curParts[i] ?? 0
-    const rem = remoteParts[i] ?? 0
-    if (cur === rem) continue
-    return cur < rem ? -1 : 1
-  }
-  return 0
-}
 
 const latestKnownVersion = computed(() => updateState.value?.latest_known_version?.trim() ?? '')
 const hasNewVersion = computed(() => {

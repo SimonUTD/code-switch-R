@@ -1021,6 +1021,10 @@
         "claude": "Claude Code",
         "codex": "Codex"
       },
+      "views": {
+        "installed": "Installed",
+        "available": "Available"
+      },
       "groups": {
         "project": "Project Skills",
         "user": "User Skills",

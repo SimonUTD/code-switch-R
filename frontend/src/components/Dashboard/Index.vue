@@ -69,6 +69,7 @@
       </div>
 
       <div
+        v-if="loggingEnabled"
         ref="heatmapContainerRef"
         class="contrib-wall"
         :aria-label="t('components.main.heatmap.ariaLabel')"
@@ -109,6 +110,13 @@
           </ul>
         </div>
       </div>
+
+      <div v-else class="logging-disabled">
+        <p>{{ t('components.console.loggingDisabled') }}</p>
+        <BaseButton variant="outline" size="sm" type="button" @click="goToSettings">
+          {{ t('components.console.loggingDisabledAction') }}
+        </BaseButton>
+      </div>
     </section>
 
     <!-- 2) 使用统计（从日志迁移：4 统计 + 折线图） -->
@@ -124,6 +132,7 @@
             :class="{ active: usageRangeDays === option.days }"
             role="tab"
             :aria-selected="usageRangeDays === option.days"
+            :disabled="!loggingEnabled"
             @click="changeUsageRange(option.days)"
           >
             {{ option.label }}
@@ -131,39 +140,48 @@
         </div>
       </div>
 
-      <div class="dashboard-stats">
-        <article
-          v-for="card in usageStatsCards"
-          :key="card.key"
-          :class="['dashboard-stat-card', { 'dashboard-stat-card--clickable': card.key === 'cost' }]"
-          @click="card.key === 'cost' && openCostDetailModal()"
+      <template v-if="loggingEnabled">
+        <div class="dashboard-stats">
+          <article
+            v-for="card in usageStatsCards"
+            :key="card.key"
+            :class="['dashboard-stat-card', { 'dashboard-stat-card--clickable': card.key === 'cost' }]"
+            @click="card.key === 'cost' && openCostDetailModal()"
+          >
+            <div class="dashboard-stat-card__label">{{ card.label }}</div>
+            <div class="dashboard-stat-card__value">{{ card.value }}</div>
+            <div class="dashboard-stat-card__hint">{{ card.hint }}</div>
+          </article>
+        </div>
+
+        <div class="dashboard-chart mac-panel">
+          <Line :data="chartData" :options="chartOptions" />
+        </div>
+
+        <BaseModal
+          :open="costDetailModal.open"
+          :title="t('components.logs.costDetail.title')"
+          @close="closeCostDetailModal"
         >
-          <div class="dashboard-stat-card__label">{{ card.label }}</div>
-          <div class="dashboard-stat-card__value">{{ card.value }}</div>
-          <div class="dashboard-stat-card__hint">{{ card.hint }}</div>
-        </article>
-      </div>
-
-      <div class="dashboard-chart mac-panel">
-        <Line :data="chartData" :options="chartOptions" />
-      </div>
-
-      <BaseModal
-        :open="costDetailModal.open"
-        :title="t('components.logs.costDetail.title')"
-        @close="closeCostDetailModal"
-      >
-        <div v-if="costDetailModal.loading" class="empty-state">{{ t('components.logs.loading') }}</div>
-        <div v-else-if="costDetailModal.data.length === 0" class="empty-state">
-          {{ t('components.logs.costDetail.empty') }}
-        </div>
-        <div v-else class="cost-detail-list">
-          <div v-for="item in costDetailModal.data" :key="item.provider" class="cost-detail-row">
-            <span class="cost-detail-provider">{{ item.provider }}</span>
-            <span class="cost-detail-cost">{{ formatCurrency(item.cost_total) }}</span>
+          <div v-if="costDetailModal.loading" class="empty-state">{{ t('components.logs.loading') }}</div>
+          <div v-else-if="costDetailModal.data.length === 0" class="empty-state">
+            {{ t('components.logs.costDetail.empty') }}
           </div>
-        </div>
-      </BaseModal>
+          <div v-else class="cost-detail-list">
+            <div v-for="item in costDetailModal.data" :key="item.provider" class="cost-detail-row">
+              <span class="cost-detail-provider">{{ item.provider }}</span>
+              <span class="cost-detail-cost">{{ formatCurrency(item.cost_total) }}</span>
+            </div>
+          </div>
+        </BaseModal>
+      </template>
+
+      <div v-else class="logging-disabled">
+        <p>{{ t('components.console.loggingDisabled') }}</p>
+        <BaseButton variant="outline" size="sm" type="button" @click="goToSettings">
+          {{ t('components.console.loggingDisabledAction') }}
+        </BaseButton>
+      </div>
     </section>
 
     <!-- 3) 监控情况（从可用性迁移：上方 4 统计） -->
@@ -196,8 +214,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageLayout from '../common/PageLayout.vue'
+import BaseButton from '../common/BaseButton.vue'
 import BaseModal from '../common/BaseModal.vue'
 import Card from '../ui/Card.vue'
 import Badge from '../ui/Badge.vue'
@@ -247,7 +267,12 @@ import {
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
 
+const router = useRouter()
 const { t, locale } = useI18n()
+
+const APP_SETTINGS_UPDATED_EVENT = 'app-settings-updated'
+const LOGGING_ENABLED_STORAGE_KEY = 'app-settings-enableLogging'
+const loggingEnabled = ref(localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true')
 
 const REFRESH_INTERVAL_MS = 30_000
 let refreshTimer: number | undefined
@@ -425,6 +450,10 @@ const showUsageTooltip = (day: UsageHeatmapDay, event: MouseEvent) => {
 
 const hideUsageTooltip = () => {
   usageTooltip.visible = false
+}
+
+const goToSettings = () => {
+  router.push('/settings')
 }
 
 const loadUsageHeatmap = async () => {
@@ -692,6 +721,7 @@ const loadCostDetailModalData = async () => {
 }
 
 const openCostDetailModal = async () => {
+  if (!loggingEnabled.value) return
   costDetailModal.open = true
   await loadCostDetailModalData()
 }
@@ -744,6 +774,7 @@ const loadMonitorStats = async () => {
 }
 
 const changeUsageRange = async (days: number) => {
+  if (!loggingEnabled.value) return
   if (usageRangeDays.value === days) return
   usageRangeDays.value = days
   await loadUsageStats()
@@ -776,12 +807,18 @@ const refreshAll = async () => {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    await Promise.all([
-      loadUsageHeatmap(),
-      loadUsageStats(),
-      loadMonitorStats(),
-      refreshSystemStatus()
-    ])
+    const tasks: Promise<unknown>[] = [loadMonitorStats(), refreshSystemStatus()]
+
+    if (loggingEnabled.value) {
+      tasks.push(loadUsageHeatmap(), loadUsageStats())
+    } else {
+      hideUsageTooltip()
+      usageStats.value = null
+      usageHeatmap.value = generateFallbackUsageHeatmap(HEATMAP_DAYS)
+      closeCostDetailModal()
+    }
+
+    await Promise.all(tasks)
   } catch (error) {
     console.error('failed to refresh dashboard', error)
   } finally {
@@ -789,7 +826,15 @@ const refreshAll = async () => {
   }
 }
 
+const syncLoggingEnabledFromStorage = () => {
+  const enabled = localStorage.getItem(LOGGING_ENABLED_STORAGE_KEY) === 'true'
+  if (enabled === loggingEnabled.value) return
+  loggingEnabled.value = enabled
+  void refreshAll()
+}
+
 onMounted(async () => {
+  window.addEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
   await refreshAll()
   refreshTimer = window.setInterval(() => {
     void refreshAll()
@@ -801,10 +846,27 @@ onUnmounted(() => {
     window.clearInterval(refreshTimer)
     refreshTimer = undefined
   }
+  window.removeEventListener(APP_SETTINGS_UPDATED_EVENT, syncLoggingEnabledFromStorage)
 })
 </script>
 
 <style scoped>
+.logging-disabled {
+  border: 1px dashed var(--mac-border);
+  border-radius: 16px;
+  padding: 24px;
+  color: var(--mac-text-secondary);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.logging-disabled p {
+  margin: 0;
+}
+
 .system-status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

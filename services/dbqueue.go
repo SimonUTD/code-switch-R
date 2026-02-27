@@ -35,7 +35,7 @@ func InitGlobalDBQueue() error {
 
 	// 队列 2：批量写入队列（启用批量，仅用于 request_log）
 	// 用途：高频 request_log INSERT（同表同操作，严格同构）
-	// 批量配置：50 条/批，最长等待 3 分钟提交（低频时减少写盘）
+	// 批量配置：50 条/批，最长等待 15 秒提交（低频时兼顾可观测性与写盘频率）
 	GlobalDBQueueLogs = NewDBWriteQueue(db, 5000, true)
 
 	return nil
@@ -264,7 +264,7 @@ func (q *DBWriteQueue) batchWorker() {
 	}()
 
 		const (
-			batchFlushInterval = 3 * time.Minute
+			batchFlushInterval = 15 * time.Second
 			batchMaxSize       = 50
 		)
 
